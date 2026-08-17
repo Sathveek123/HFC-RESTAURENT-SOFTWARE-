@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useOrderStore, OrderRecord } from '@/store/orderStore'
+import { supabase } from '@/lib/supabase'
 
 export default function KitchenViewPage() {
   const orders = useOrderStore(state => state.orders)
@@ -17,6 +18,7 @@ export default function KitchenViewPage() {
   const [activeTab, setActiveTab] = useState<'cooking' | 'history'>('cooking')
   const [bigTextMode, setBigTextMode] = useState(false)
   const [timeTicker, setTimeTicker] = useState(0)
+  const [tableKots, setTableKots] = useState<any[]>([])
 
   // KDS Screen Lock States
   const [kdsLockPin, setKdsLockPin] = useState<string | null>(null)
@@ -34,17 +36,105 @@ export default function KitchenViewPage() {
     return () => clearInterval(interval)
   }, [])
 
-  // Filter orders
+  // 1b. Fetch active table orders and set up real-time sync
+  useEffect(() => {
+    const fetchTableKots = async () => {
+      const { data, error } = await supabase
+        .from('table_orders')
+        .select('*')
+        .in('status', ['placed', 'accepted', 'ready', 'served'])
+
+      if (!error && data) {
+        setTableKots(data)
+      }
+    }
+
+    fetchTableKots()
+
+    const channel = supabase
+      .channel('kds-table-kots')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'table_orders' },
+        () => {
+          fetchTableKots()
+        }
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  // Merge and filter cooking orders
   const cookingOrders = useMemo(() => {
-    return orders.filter(o => o.status === 'accepted')
-      .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
-  }, [orders])
+    const normal = orders
+      .filter(o => o.status === 'accepted')
+      .map(o => ({
+        id: o.id,
+        displayId: o.id.slice(-6).toUpperCase(),
+        createdAt: o.createdAt,
+        orderType: o.orderType,
+        status: o.status,
+        items: o.items,
+        notes: o.notes,
+        isTableOrder: false
+      }))
+
+    const table = tableKots
+      .filter(k => k.status === 'placed' || k.status === 'accepted')
+      .map(k => ({
+        id: k.id,
+        displayId: k.kot_number,
+        createdAt: k.placed_at,
+        orderType: 'dine-in',
+        status: k.status,
+        items: k.items,
+        notes: k.special_instructions,
+        isTableOrder: true,
+        tableNumber: k.table_number,
+        roundNumber: k.round_number,
+        kotNumber: k.kot_number
+      }))
+
+    return [...normal, ...table].sort(
+      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    )
+  }, [orders, tableKots])
 
   const historyOrders = useMemo(() => {
-    return orders.filter(o => o.status === 'ready' || o.status === 'picked-up' || o.status === 'delivered')
-      .sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime())
-      .slice(0, 16) // Show last 16 completed
-  }, [orders])
+    const normal = orders
+      .filter(o => o.status === 'ready' || o.status === 'picked-up' || o.status === 'delivered')
+      .map(o => ({
+        id: o.id,
+        displayId: o.id.slice(-6).toUpperCase(),
+        createdAt: o.updatedAt || o.createdAt,
+        orderType: o.orderType,
+        status: o.status,
+        items: o.items,
+        isTableOrder: false
+      }))
+
+    const table = tableKots
+      .filter(k => k.status === 'ready' || k.status === 'served')
+      .map(k => ({
+        id: k.id,
+        displayId: k.kot_number,
+        createdAt: k.served_at || k.placed_at,
+        orderType: 'dine-in',
+        status: k.status,
+        items: k.items,
+        isTableOrder: true,
+        tableNumber: k.table_number,
+        roundNumber: k.round_number,
+        kotNumber: k.kot_number
+      }))
+
+    return [...normal, ...table]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 16)
+  }, [orders, tableKots])
 
   // 2. Play kitchen bell sound when a new order arrives in accepted status
   const prevCountRef = useRef(cookingOrders.length)
@@ -62,7 +152,7 @@ export default function KitchenViewPage() {
       })
     }
     prevCountRef.current = cookingOrders.length
-  }, [cookingOrders.length])
+  }, [cookingOrders])
 
   const playKitchenSound = () => {
     try {
@@ -89,6 +179,33 @@ export default function KitchenViewPage() {
   const handleMarkReady = (orderId: string) => {
     updateOrderStatus(orderId, 'ready')
     toast.success('Food marked ready & packed ✓')
+  }
+
+  const handleAdvanceTableKot = async (kotId: string, currentStatus: string) => {
+    let nextStatus = 'accepted'
+    if (currentStatus === 'placed') {
+      nextStatus = 'accepted'
+    } else if (currentStatus === 'accepted') {
+      nextStatus = 'ready'
+    }
+
+    try {
+      const { error } = await supabase
+        .from('table_orders')
+        .update({
+          status: nextStatus,
+          served_at: nextStatus === 'served' ? new Date().toISOString() : null
+        })
+        .eq('id', kotId)
+
+      if (error) {
+        toast.error('Failed to update kitchen ticket: ' + error.message)
+      } else {
+        toast.success(nextStatus === 'ready' ? 'KOT marked ready for service! 🍳' : 'KOT accepted by chef 🧑‍🍳')
+      }
+    } catch (e) {
+      toast.error('Connection error')
+    }
   }
 
   // Elapsed time styling helper
@@ -273,15 +390,29 @@ export default function KitchenViewPage() {
                 return (
                   <div
                     key={order.id}
-                    className={`flex flex-col bg-white border rounded-[16px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${elapsedStyles.card}`}
+                    className={`flex flex-col bg-white border rounded-[16px] overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 ${
+                      order.isTableOrder && order.status === 'placed'
+                        ? 'border-brand-red shadow-lg bg-red-50/5'
+                        : elapsedStyles.card
+                    }`}
                   >
                     {/* Header: Order ID & Time Status */}
-                    <div className="p-4 border-b border-brand-border bg-[#FDFDFD]">
+                    <div className={`p-4 border-b border-brand-border ${order.isTableOrder ? 'bg-red-50/10' : 'bg-[#FDFDFD]'}`}>
                       <div className="flex items-center justify-between">
-                        <span className="font-mono font-bold text-[15px] text-brand-black">
-                          #{order.id.slice(-6).toUpperCase()}
-                        </span>
-                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${elapsedStyles.bg}`}>
+                        {order.isTableOrder ? (
+                          <span className="font-brand font-black text-[15px] text-brand-red">
+                            TABLE {(order as any).tableNumber}
+                          </span>
+                        ) : (
+                          <span className="font-mono font-bold text-[15px] text-brand-black">
+                            #{order.displayId}
+                          </span>
+                        )}
+                        <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold border ${
+                          order.isTableOrder && order.status === 'placed'
+                            ? 'bg-red-100 text-brand-red border-red-200 animate-pulse'
+                            : elapsedStyles.bg
+                        }`}>
                           <Clock size={12} />
                           <span>{relativeTime}</span>
                         </div>
@@ -289,8 +420,12 @@ export default function KitchenViewPage() {
 
                       {/* Display order type */}
                       <div className="flex items-center justify-between mt-2.5">
-                        <span className="text-[11px] font-brand font-bold text-brand-muted uppercase tracking-wider">
-                          Type: {order.orderType.toUpperCase()}
+                        <span className={`text-[11px] font-brand font-bold uppercase tracking-wider ${
+                          order.isTableOrder ? 'text-brand-red' : 'text-brand-muted'
+                        }`}>
+                          {order.isTableOrder
+                            ? `Round ${(order as any).roundNumber} (KOT: ${order.displayId})`
+                            : `Type: ${order.orderType.toUpperCase()}`}
                         </span>
                       </div>
                     </div>
@@ -298,7 +433,7 @@ export default function KitchenViewPage() {
                     {/* Items List - Rendered Large if BigTextMode is on */}
                     <div className="p-5 flex-1 space-y-4">
                       <div className="space-y-3">
-                        {order.items.map((item, idx) => (
+                        {order.items.map((item: any, idx: number) => (
                           <div key={idx} className="flex items-start justify-between gap-3">
                             <div className="flex items-start gap-2">
                               <span className={`font-brand font-black ${bigTextMode ? 'text-[24px]' : 'text-[17px]'} text-brand-black`}>
@@ -331,13 +466,27 @@ export default function KitchenViewPage() {
 
                     {/* Mark Ready Button */}
                     <div className="p-4 border-t border-brand-border bg-[#FDFDFD]">
-                      <button
-                        onClick={() => handleMarkReady(order.id)}
-                        className="w-full py-3.5 rounded-btn flex items-center justify-center gap-2 cursor-pointer transition-all bg-brand-black hover:bg-brand-red text-white hover:shadow-lg font-bold font-brand text-[13.5px]"
-                      >
-                        <CheckCircle2 size={16} />
-                        <span>Food Ready & Packed</span>
-                      </button>
+                      {order.isTableOrder ? (
+                        <button
+                          onClick={() => handleAdvanceTableKot(order.id, order.status)}
+                          className={`w-full py-3.5 rounded-btn flex items-center justify-center gap-2 cursor-pointer transition-all font-bold font-brand text-[13.5px] ${
+                            order.status === 'placed'
+                              ? 'bg-blue-600 hover:bg-blue-700 text-white hover:shadow-lg'
+                              : 'bg-brand-black hover:bg-brand-red text-white hover:shadow-lg'
+                          }`}
+                        >
+                          <CheckCircle2 size={16} />
+                          <span>{order.status === 'placed' ? 'Accept Order' : 'Mark KOT Ready'}</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleMarkReady(order.id)}
+                          className="w-full py-3.5 rounded-btn flex items-center justify-center gap-2 cursor-pointer transition-all bg-brand-black hover:bg-brand-red text-white hover:shadow-lg font-bold font-brand text-[13.5px]"
+                        >
+                          <CheckCircle2 size={16} />
+                          <span>Food Ready & Packed</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 )
@@ -373,21 +522,21 @@ export default function KitchenViewPage() {
                 </thead>
                 <tbody className="divide-y divide-brand-border">
                   {historyOrders.map(order => {
-                    const relativeTime = formatDistanceToNow(new Date(order.updatedAt || order.createdAt), { addSuffix: true })
+                    const relativeTime = formatDistanceToNow(new Date(order.createdAt), { addSuffix: true })
                     return (
                       <tr key={order.id} className="hover:bg-brand-surface/30 transition-colors">
                         <td className="p-4 font-body text-[12.5px] text-brand-black font-medium">
                           {relativeTime}
                         </td>
                         <td className="p-4 font-mono text-[12.5px] text-brand-muted">
-                          #{order.id.slice(-6).toUpperCase()}
+                          #{order.displayId}
                         </td>
                         <td className="p-4 font-body text-[12px] text-brand-muted font-semibold uppercase">
-                          {order.orderType}
+                          {order.isTableOrder ? `Dine-In (Table ${(order as any).tableNumber})` : order.orderType}
                         </td>
                         <td className="p-4">
                           <div className="flex flex-wrap gap-2">
-                            {order.items.map((it, i) => (
+                            {order.items.map((it: any, i: number) => (
                               <span key={i} className="inline-flex items-center bg-brand-surface border border-brand-border px-2 py-0.5 rounded-[6px] text-[11.5px] font-semibold text-brand-black">
                                 {it.quantity}x {it.name}
                               </span>

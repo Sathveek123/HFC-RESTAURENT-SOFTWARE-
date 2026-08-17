@@ -13,12 +13,14 @@ import {
   Settings,
   LogOut,
   X,
-  Package
+  Package,
+  LayoutGrid
 } from 'lucide-react'
 import Image from 'next/image'
 import { useAdminAuthStore } from '@/store/adminAuthStore'
 import { useOrderStore } from '@/store/orderStore'
 import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 export default function AdminSidebar() {
   const pathname = usePathname()
@@ -28,9 +30,33 @@ export default function AdminSidebar() {
 
   const [mounted, setMounted] = useState(false)
   const [isOpen, setIsOpen] = useState(false)
+  const [activeTablesCount, setActiveTablesCount] = useState(0)
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    const fetchActiveCount = async () => {
+      const { count } = await supabase
+        .from('table_sessions')
+        .select('*', { count: 'exact', head: true })
+        .in('status', ['active', 'payment_pending'])
+      
+      setActiveTablesCount(count || 0)
+    }
+    fetchActiveCount()
+
+    const channel = supabase
+      .channel('sidebar-tables-count')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'table_sessions' }, () => {
+        fetchActiveCount()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
   }, [])
 
   // Listen for hamburger toggle event
@@ -72,6 +98,12 @@ export default function AdminSidebar() {
       href: '/admin/kitchen',
       icon: ChefHat,
       badge: kitchenOrdersCount > 0 ? kitchenOrdersCount : undefined,
+    },
+    {
+      label: 'Tables',
+      href: '/admin/tables',
+      icon: LayoutGrid,
+      badge: activeTablesCount > 0 ? activeTablesCount : undefined,
     },
     {
       label: 'Bills',
