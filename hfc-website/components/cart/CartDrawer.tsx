@@ -162,7 +162,7 @@ export default function CartDrawer() {
               signal: controller.signal,
               headers: {
                 'Accept-Language': 'en',
-                'User-Agent': 'HFC-Cloud-Kitchen-Client/1.0 (info@hfcconsultancy.com)'
+                'User-Agent': 'HFC-Restaurant-Software-Client/1.0 (info@hfcconsultancy.com)'
               },
             }
           )

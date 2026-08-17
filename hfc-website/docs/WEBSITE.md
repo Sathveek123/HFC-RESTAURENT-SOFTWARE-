@@ -1,6 +1,6 @@
 # 🌐 HFC Customer Website — Documentation
 
-> **URL:** https://hfc-cloud-kitchen-services-white-la.vercel.app  
+> **URL:** https://hfc-restaurant-software.vercel.app  
 > **Route:** `/`  
 > **File:** `app/page.tsx`
 
@@ -10,7 +10,7 @@
 
 The customer-facing website serves two purposes:
 1. **Consultancy showcase** — presents HFC's expertise, services, and trust signals to potential clients.
-2. **Cloud kitchen ordering** — allows customers to browse the menu, add items to cart, apply discount coupons, and place orders.
+2. **Restaurant ordering** — allows customers to browse the menu, add items to cart, apply discount coupons, and place orders.
 
 Every config detail (delivery fees, UPI ID, coupons, menu products) is loaded from Supabase and updated in **real-time** via WebSockets without refreshing.
 

@@ -44,7 +44,7 @@ const SERVICES_DATA: Record<string, ServiceDetail> = {
     icon: Award,
     description: 'Establish a powerful, unified visual narrative across physical signage, delivery packaging, Swiggy/Zomato, and direct menus.',
     problemTitle: 'The Problem: Generic styling that gets drowned out in competitive aggregators.',
-    problemDescription: 'If your brand looks exactly like 10 other cloud kitchens on Swiggy, you are forced to compete solely on discount percentages, killing your profit margins.',
+    problemDescription: 'If your brand looks exactly like 10 other restaurants on Swiggy, you are forced to compete solely on discount percentages, killing your profit margins.',
     process: [
       'Define unique brand voice and local market positioning.',
       'Design modern typography systems and harmonious brand color systems.',
@@ -124,7 +124,7 @@ const SERVICES_DATA: Record<string, ServiceDetail> = {
     icon: Star,
     description: 'Our signature consulting package combining kitchen layouts, menu engineering, cost margins, branding, and SaaS ordering platforms.',
     problemTitle: 'The Problem: Navigating the entire startup roadmap alone without F&B experience.',
-    problemDescription: 'Opening a cloud kitchen involves multiple complex layers. A single wrong decision in location, menu structure, or pricing can lead to capital loss within 6 months.',
+    problemDescription: 'Opening a restaurant software involves multiple complex layers. A single wrong decision in location, menu structure, or pricing can lead to capital loss within 6 months.',
     process: [
       'Refine the core kitchen concept and conduct local target demographic audits.',
       'Design complete kitchen workflow layouts and source local supplier equipment.',
@@ -132,7 +132,7 @@ const SERVICES_DATA: Record<string, ServiceDetail> = {
       'Integrate HFC direct WhatsApp ordering and anti-theft inventory checkups.'
     ],
     deliverables: [
-      'Complete Cloud Kitchen Pre-Launch Blueprint.',
+      'Complete Restaurant Software Pre-Launch Blueprint.',
       'Standardized Menu & Recipe portion manual.',
       'WhatsApp direct ordering CRM configuration setup.'
     ],

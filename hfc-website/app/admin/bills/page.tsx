@@ -248,7 +248,7 @@ export default function AdminBillsPage() {
         </head>
         <body>
           <div class="center">
-            <h2>HFC Cloud Kitchen</h2>
+            <h2>HFC Restaurant Software</h2>
             <p style="font-size: 11px; margin: 5px 0;">Premium F&B Consulting & Kitchen</p>
           </div>
           <div class="divider"></div>

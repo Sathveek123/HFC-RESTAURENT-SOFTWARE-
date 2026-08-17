@@ -1,6 +1,6 @@
 # 🛠️ HFC Admin Panel — Complete Documentation
 
-> **URL:** https://hfc-cloud-kitchen-services-white-la.vercel.app/admin  
+> **URL:** https://hfc-restaurant-software.vercel.app/admin  
 > **Login:** `/admin/login` → redirects to `/admin/dashboard`  
 > **Auth:** Supabase Auth JWT based authentication (admin claims check)
 

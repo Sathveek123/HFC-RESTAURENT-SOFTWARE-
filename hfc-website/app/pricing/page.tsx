@@ -47,7 +47,7 @@ const PRICING_TIERS = [
     yearlyPrice: 5999,
     monthlyCostPerMonthText: 'Just ₹500/month, billed annually',
     dotColor: 'bg-blue-500',
-    description: 'For active cloud kitchens running their own delivery fleet and needing GST-compliant billing.',
+    description: 'For active restaurants running their own delivery fleet and needing GST-compliant billing.',
     ctaLabel: 'Upgrade to Pro',
     featured: true, // ribbon + red border + offset on desktop
     badgeColor: 'border-brand-red shadow-[0_12px_40px_rgba(204,0,0,0.12)]',
@@ -81,7 +81,7 @@ const PRICING_TIERS = [
     yearlyPrice: 8000,
     monthlyCostPerMonthText: 'Just ₹667/month, billed annually',
     dotColor: null, // Emoji 🔥
-    description: 'The complete Cloud Kitchen ERP — eliminate shrinkage, prevent theft, automate procurement.',
+    description: 'The complete Restaurant ERP — eliminate shrinkage, prevent theft, automate procurement.',
     ctaLabel: 'Go Premium',
     featured: false,
     badgeColor: 'border-brand-border',
@@ -280,7 +280,7 @@ export default function PricingPage() {
           __html: JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Product",
-            "name": "HFC Cloud Kitchen ERP Software",
+            "name": "HFC Restaurant ERP Software",
             "description": "Simple transparent pricing tiers for F&B operators. Auto depletion inventory, rider dispatches, and KDS.",
             "offers": [
               { "@type": "Offer", "name": "Basic Plan", "price": "299", "priceCurrency": "INR", "priceSpecification": { "@type": "UnitPriceSpecification", "price": "299", "priceCurrency": "INR", "unitText": "Month" } },
@@ -311,7 +311,7 @@ export default function PricingPage() {
           </div>
 
           <h1 className="font-display font-bold text-[36px] sm:text-[52px] leading-[1.15] text-brand-black">
-            Run Your Cloud Kitchen<br />
+            Run Your Restaurant Software<br />
             <span className="text-brand-red">Without the Chaos.</span>
           </h1>
 

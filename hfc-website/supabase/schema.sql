@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════════════
--- HFC CLOUD KITCHEN — SUPABASE DATABASE SCHEMA & REALTIME SETUP
+-- HFC RESTAURANT SOFTWARE — SUPABASE DATABASE SCHEMA & REALTIME SETUP
 -- Project: cmwsffhenpckwkwgnmsy
 -- ══════════════════════════════════════════════════════════════════════════════
 

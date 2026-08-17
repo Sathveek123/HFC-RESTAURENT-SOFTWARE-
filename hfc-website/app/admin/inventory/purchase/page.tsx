@@ -91,7 +91,7 @@ function PurchaseContent() {
       }
     })
     text += `\n*Total Est Procurement Cost: ₹${totalCost.toFixed(0)}*\n\n`
-    text += `Generated automatically by HFC Cloud Kitchen System.`
+    text += `Generated automatically by HFC Restaurant Software System.`
     return encodeURIComponent(text)
   }
 

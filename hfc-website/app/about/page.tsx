@@ -24,12 +24,12 @@ const TIMELINE_ENTRIES = [
   {
     year: '2023',
     title: '200+ Brands Strong',
-    description: 'From local street outlets to multi-location cloud kitchens, HFC has guided over 200 F&B businesses across Andhra Pradesh and beyond.'
+    description: 'From local street outlets to multi-location restaurants, HFC has guided over 200 F&B businesses across Andhra Pradesh and beyond.'
   },
   {
     year: '2026',
-    title: 'Today — The Complete Cloud Kitchen ERP',
-    description: 'We combine hands-on culinary consulting with an anti-theft cloud kitchen software platform — built from 15 years of active market experience.'
+    title: 'Today — The Complete Restaurant ERP',
+    description: 'We combine hands-on culinary consulting with an anti-theft restaurant software software platform — built from 15 years of active market experience.'
   }
 ]
 
@@ -83,7 +83,7 @@ export default function AboutPage() {
             "url": "https://hfc-website-two.vercel.app/about",
             "logo": "https://hfc-website-two.vercel.app/logo.jpeg",
             "foundingDate": "2011",
-            "description": "Premium Food & F&B Consultancy Services based in Andhra Pradesh helping cloud kitchens and restaurants scale profitability.",
+            "description": "Premium Food & F&B Consultancy Services based in Andhra Pradesh helping restaurants and restaurants scale profitability.",
             "address": {
               "@type": "PostalAddress",
               "streetAddress": "Labour Colony, Rajam",

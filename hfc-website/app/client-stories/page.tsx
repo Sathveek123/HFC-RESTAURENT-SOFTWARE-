@@ -81,7 +81,7 @@ export default function ClientStoriesPage() {
         </h1>
 
         <p className="font-tagline italic text-[16px] sm:text-[18px] text-brand-body leading-[1.7] mt-5 max-w-[600px] mx-auto">
-          See how local restaurant owners and cloud kitchen startups across India used HFC consulting and automation platforms to eliminate theft, cut wastage, and multiply direct orders.
+          See how local restaurant owners and restaurant software startups across India used HFC consulting and automation platforms to eliminate theft, cut wastage, and multiply direct orders.
         </p>
       </section>
 

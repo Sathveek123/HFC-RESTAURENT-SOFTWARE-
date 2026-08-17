@@ -1,9 +1,9 @@
-# 🔴 HFC Cloud Kitchen — Complete Realtime Sync Architecture
+# 🔴 HFC Restaurant Software — Complete Realtime Sync Architecture
 
 > **Last Updated:** August 14, 2026  
 > **Status:** 100% Production Live  
 > **Supabase Project:** `cmwsffhenpckwkwgnmsy`  
-> **Production URL:** `https://hfc-cloud-kitchen-services-white-la.vercel.app`
+> **Production URL:** `https://hfc-restaurant-software.vercel.app`
 
 ---
 
@@ -535,17 +535,17 @@ GRANT EXECUTE ON FUNCTION public.sync_setting(TEXT, JSONB) TO anon, authenticate
 
 | Environment | URL |
 |-------------|-----|
-| Production | `https://hfc-cloud-kitchen-services-white-la.vercel.app` |
-| Admin Panel | `https://hfc-cloud-kitchen-services-white-la.vercel.app/admin` |
-| Delivery Portal | `https://hfc-cloud-kitchen-services-white-la.vercel.app/agent` |
+| Production | `https://hfc-restaurant-software.vercel.app` |
+| Admin Panel | `https://hfc-restaurant-software.vercel.app/admin` |
+| Delivery Portal | `https://hfc-restaurant-software.vercel.app/agent` |
 | Supabase Dashboard | `https://supabase.com/dashboard/project/cmwsffhenpckwkwgnmsy` |
 | Supabase SQL Editor | `https://supabase.com/dashboard/project/cmwsffhenpckwkwgnmsy/editor` |
-| Vercel Dashboard | `https://vercel.com/sathveek12345-3432s-projects/hfc-cloud-kitchen-services-white-label-brand` |
+| Vercel Dashboard | `https://vercel.com/sathveek12345-3432s-projects/hfc-restaurant-software` |
 
 ### Deploy Command
 ```bash
 npx vercel deploy --prod --yes
-# from: d:\Client Projects\DCH PROJECTS\HFC Cloud Kitchen\
+# from: d:\Client Projects\DCH PROJECTS\HFC Restaurant Software\
 ```
 
 ---

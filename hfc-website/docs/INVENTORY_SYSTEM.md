@@ -1,4 +1,4 @@
-# 🏭 HFC Cloud Kitchen Inventory & Recipe Management System
+# 🏭 HFC Restaurant Software Inventory & Recipe Management System
 
 ## Overview
 The HFC Inventory and Recipe Management System is a premium, real-time variance detection platform built directly on Supabase PostgreSQL and Next.js. It automatically tracks raw material consumption based on dynamic order menu items, calculates end-of-day kitchen wastage, flags unexplained shrinkage, and provides automated WhatsApp procurement plans.

@@ -1,11 +1,11 @@
-# 🍗 HFC Consultancy Services — White-Label Cloud Kitchen Platform (v1.20.0)
+# 🍗 HFC Consultancy Services — White-Label Restaurant Software Platform (v1.20.0)
 
-> A modern, ultra-secure, white-label cloud kitchen ordering platform, admin management dashboard, and delivery agent portal engineered with Next.js 16, TypeScript, Tailwind CSS, Supabase PostgreSQL, and Sentry Error Monitoring.
+> A modern, ultra-secure, white-label restaurant software ordering platform, admin management dashboard, and delivery agent portal engineered with Next.js 16, TypeScript, Tailwind CSS, Supabase PostgreSQL, and Sentry Error Monitoring.
 
-[![Deployment](https://img.shields.io/badge/Deployment-Vercel%20Production-000000?style=for-the-badge&logo=vercel)](https://hfc-cloud-kitchen-services-white-la.vercel.app/)
-[![Build Status](https://img.shields.io/badge/Build-Passing-2E7D32?style=for-the-badge&logo=nextdotjs)](https://hfc-cloud-kitchen-services-white-la.vercel.app/)
-[![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase)](https://hfc-cloud-kitchen-services-white-la.vercel.app/)
-[![Compliance](https://img.shields.io/badge/Compliance-DPDP%20Act%202023-CC0000?style=for-the-badge)](https://hfc-cloud-kitchen-services-white-la.vercel.app/privacy)
+[![Deployment](https://img.shields.io/badge/Deployment-Vercel%20Production-000000?style=for-the-badge&logo=vercel)](https://hfc-restaurant-software.vercel.app/)
+[![Build Status](https://img.shields.io/badge/Build-Passing-2E7D32?style=for-the-badge&logo=nextdotjs)](https://hfc-restaurant-software.vercel.app/)
+[![Database](https://img.shields.io/badge/Database-Supabase%20PostgreSQL-3ECF8E?style=for-the-badge&logo=supabase)](https://hfc-restaurant-software.vercel.app/)
+[![Compliance](https://img.shields.io/badge/Compliance-DPDP%20Act%202023-CC0000?style=for-the-badge)](https://hfc-restaurant-software.vercel.app/privacy)
 
 ---
 
@@ -13,13 +13,13 @@
 
 | Portal / Screen | Production URL | Credentials / Notes |
 |-----------------|----------------|---------------------|
-| 🌐 **Customer Website & Menu** | [https://hfc-cloud-kitchen-services-white-la.vercel.app](https://hfc-cloud-kitchen-services-white-la.vercel.app) | Public menu, interactive cart, coupon redemption, 2-step checkout |
-| 🔑 **Admin Control Panel** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/admin/login](https://hfc-cloud-kitchen-services-white-la.vercel.app/admin/login) | **Username:** `admin` — Password configured via Supabase Auth |
-| 🛵 **Delivery Agent Portal** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/agent/login](https://hfc-cloud-kitchen-services-white-la.vercel.app/agent/login) | Credentials provisioned via Admin Panel → Agents page |
-| 📍 **Customer Live Order Tracker** | `https://hfc-cloud-kitchen-services-white-la.vercel.app/track/[orderId]` | Real-time status stepper, QR payment scanner, single-order RPC lookup |
-| ⚖️ **Privacy Policy (DPDP Act)** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/privacy](https://hfc-cloud-kitchen-services-white-la.vercel.app/privacy) | Data subject rights, DPO contact, erasure requests |
-| 📜 **Terms of Service** | [https://hfc-cloud-kitchen-services-white-la.vercel.app/terms](https://hfc-cloud-kitchen-services-white-la.vercel.app/terms) | Order fulfillment terms, 5% GST computation, refund rules |
-| 🐙 **GitHub Repository** | [GitHub Repo](https://github.com/Sathveek123/HFC-CLOUD-KITCHEN-SERVICES-WHITE-LABEL-BRAND-) | Branch: `main` |
+| 🌐 **Customer Website & Menu** | [https://hfc-restaurant-software.vercel.app](https://hfc-restaurant-software.vercel.app) | Public menu, interactive cart, coupon redemption, 2-step checkout |
+| 🔑 **Admin Control Panel** | [https://hfc-restaurant-software.vercel.app/admin/login](https://hfc-restaurant-software.vercel.app/admin/login) | **Username:** `admin` — Password configured via Supabase Auth |
+| 🛵 **Delivery Agent Portal** | [https://hfc-restaurant-software.vercel.app/agent/login](https://hfc-restaurant-software.vercel.app/agent/login) | Credentials provisioned via Admin Panel → Agents page |
+| 📍 **Customer Live Order Tracker** | `https://hfc-restaurant-software.vercel.app/track/[orderId]` | Real-time status stepper, QR payment scanner, single-order RPC lookup |
+| ⚖️ **Privacy Policy (DPDP Act)** | [https://hfc-restaurant-software.vercel.app/privacy](https://hfc-restaurant-software.vercel.app/privacy) | Data subject rights, DPO contact, erasure requests |
+| 📜 **Terms of Service** | [https://hfc-restaurant-software.vercel.app/terms](https://hfc-restaurant-software.vercel.app/terms) | Order fulfillment terms, 5% GST computation, refund rules |
+| 🐙 **GitHub Repository** | [GitHub Repo](https://github.com/Sathveek123/HFC-RESTAURENT-SOFTWARE-) | Branch: `main` |
 
 ---
 

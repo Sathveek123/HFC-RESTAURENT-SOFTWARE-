@@ -90,7 +90,7 @@ function DashboardContent() {
       {/* Dynamic Inventory Layout Subbar Header */}
       <InventoryHeader
         title="Inventory Dashboard"
-        description="Real-time theoretical consumption tracking and ingredient alerts for HFC Cloud Kitchen."
+        description="Real-time theoretical consumption tracking and ingredient alerts for HFC Restaurant Software."
       />
 
       {/* KPI Cards Row */}

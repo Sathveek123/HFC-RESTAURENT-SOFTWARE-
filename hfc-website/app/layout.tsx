@@ -36,23 +36,23 @@ const fontTagline = Lora({
 })
 
 export const metadata: Metadata = {
-  title: 'HFC Cloud Kitchen | Order Delicious Food Online',
+  title: 'HFC Restaurant Software | Order Delicious Food Online',
   description: 'Order premium quality chicken biryani, dal makhani, paneer tikka, and more online. Delivered hot and fresh directly to your doorstep in Rajam.',
   icons: {
     icon: '/logo.jpeg',
     apple: '/logo.jpeg',
   },
   openGraph: {
-    title: 'HFC Cloud Kitchen | Order Delicious Food Online',
+    title: 'HFC Restaurant Software | Order Delicious Food Online',
     description: 'Order premium quality chicken biryani, dal makhani, paneer tikka, and more online. Delivered hot and fresh directly to your doorstep in Rajam.',
     url: 'https://hfc-website-two.vercel.app',
-    siteName: 'HFC Cloud Kitchen',
+    siteName: 'HFC Restaurant Software',
     images: [
       {
         url: 'https://hfc-website-two.vercel.app/logo.jpeg',
         width: 800,
         height: 800,
-        alt: 'HFC Cloud Kitchen Brand Logo',
+        alt: 'HFC Restaurant Software Brand Logo',
       },
     ],
     locale: 'en_IN',
@@ -60,7 +60,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'HFC Cloud Kitchen | Order Delicious Food Online',
+    title: 'HFC Restaurant Software | Order Delicious Food Online',
     description: 'Order premium quality chicken biryani, dal makhani, paneer tikka, and more online. Delivered hot and fresh directly to your doorstep in Rajam.',
     images: ['https://hfc-website-two.vercel.app/logo.jpeg'],
   },
@@ -84,7 +84,7 @@ export default function RootLayout({
             __html: JSON.stringify({
               '@context': 'https://schema.org',
               '@type': 'Restaurant',
-              'name': 'HFC Cloud Kitchen',
+              'name': 'HFC Restaurant Software',
               'image': 'https://hfc-website-two.vercel.app/logo.jpeg',
               'url': 'https://hfc-website-two.vercel.app',
               'telephone': '+919912799855',

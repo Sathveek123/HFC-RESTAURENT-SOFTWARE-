@@ -1,4 +1,4 @@
-# 📝 HFC Cloud Kitchen — Build Changelog
+# 📝 HFC Restaurant Software — Build Changelog
 
 All notable changes to the HFC Consultancy Services application documented chronologically.
 
@@ -166,7 +166,7 @@ All notable changes to the HFC Consultancy Services application documented chron
 - **Independent Printing Hydration**: Refactored the `mapDbBillToBill` frontend mapper inside `billsStore.ts` to fallback to these database columns when an order is no longer present in the local 30-day client cache. Printed invoices now render itemized receipts even for legacy database histories.
 
 ### 🌐 Landing Page Hero Card
-- **Stale Text Removed**: Cleaned up the landing page badge inside `HeroBrandCircle.tsx` from "Menu Ready — Launch in 7 Days" to "Now Live — Order via WhatsApp" to reflect the actual live deployment state of the cloud kitchen website.
+- **Stale Text Removed**: Cleaned up the landing page badge inside `HeroBrandCircle.tsx` from "Menu Ready — Launch in 7 Days" to "Now Live — Order via WhatsApp" to reflect the actual live deployment state of the restaurant software website.
 
 ### Files Modified
 | File | Change |
@@ -323,7 +323,7 @@ All notable changes to the HFC Consultancy Services application documented chron
 
 ### 🌍 Geocoding
 - **OSM Nominatim fetch timeout** (`components/cart/CartDrawer.tsx`): Wrapped reverse geocoding request in a 5-second `AbortController` timeout. If OSM API is slow or rate-limited, checkout never hangs — user can type address manually.
-- **Nominatim User-Agent header**: Added `User-Agent: HFC-Cloud-Kitchen-Client/1.0 (info@hfcconsultancy.com)` to comply with OSM API usage policy and prevent IP blocks.
+- **Nominatim User-Agent header**: Added `User-Agent: HFC-Restaurant-Software-Client/1.0 (info@hfcconsultancy.com)` to comply with OSM API usage policy and prevent IP blocks.
 
 ### 🔧 Dynamic Configuration
 - **WhatsApp & UPI settings unified** (`lib/whatsapp.ts`): Replaced all static `MERCHANT_PHONE` and `MERCHANT_UPI_ID` constants. Order confirmation WhatsApp links and UPI deep-links now resolve `whatsappNumber` and `upiId` from `useSettingsStore` at the moment of invocation. Changing numbers in the Admin Settings panel now takes effect everywhere instantly.
@@ -707,7 +707,7 @@ All notable changes to the HFC Consultancy Services application documented chron
 ## [v2.2.0] — Full Credential Scrub, Production Hardening & Final Deployment
 
 **Release Date:** August 14, 2026  
-**Deploy URL:** https://hfc-cloud-kitchen-services-white-la.vercel.app
+**Deploy URL:** https://hfc-restaurant-software.vercel.app
 
 ### Security: Credential Scrub (Zero Leaks Confirmed)
 

@@ -1,6 +1,6 @@
-# 🏗️ HFC Cloud Kitchen — Project Overview
+# 🏗️ HFC Restaurant Software — Project Overview
 
-> **Production URL:** https://hfc-cloud-kitchen-services-white-la.vercel.app  
+> **Production URL:** https://hfc-restaurant-software.vercel.app  
 > **Supabase Project:** cmwsffhenpckwkwgnmsy  
 > **Stack:** Next.js 16.3 · TypeScript · Tailwind CSS v4 · Supabase · Zustand · Vercel
 
@@ -10,7 +10,7 @@
 
 **HFC Consultancy Services** is a premium Food & Beverage consultancy brand based in Kasibugga, Srikakulam District, Andhra Pradesh, India. This application serves as their:
 
-1. **Customer-facing website** — Cloud kitchen ordering platform with live menu, cart, and coupon support
+1. **Customer-facing website** — Restaurant ordering platform with live menu, cart, and coupon support
 2. **Admin panel** — Full business management dashboard (orders, products, bills, coupons, agents, settings)
 3. **Delivery agent portal** — Lightweight rider-facing app for order dispatch and status updates
 
