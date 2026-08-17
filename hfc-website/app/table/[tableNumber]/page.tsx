@@ -216,15 +216,15 @@ export default function TableOrderingPage({ params }: TablePageProps) {
     <div className="min-h-screen bg-white">
       {renderHeader(ownsActiveSession)}
       {ownsActiveSession && (
-        <div className="bg-brand-redLight px-4 py-2 flex items-center justify-between border-b border-brand-red/10 animate-fade-in">
-          <span className="text-[12px] font-body font-semibold text-brand-red">
-            Adding items to your active session
+        <div className="bg-brand-redLight px-4 py-2.5 flex items-center justify-between border-b border-brand-red/10 animate-fade-in">
+          <span className="text-[12.5px] font-body font-semibold text-brand-red">
+            Adding items to active session
           </span>
           <button
             onClick={() => setShowMenu(false)}
-            className="text-[11.5px] font-brand font-bold text-brand-red hover:underline cursor-pointer"
+            className="text-[12px] font-brand font-bold text-brand-red hover:underline cursor-pointer"
           >
-            Cancel
+            View Placed Order (₹{Number(dbSession?.total_amount || 0).toFixed(0)}) ➜
           </button>
         </div>
       )}

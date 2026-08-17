@@ -39,13 +39,23 @@ export default function KitchenViewPage() {
   // 1b. Fetch active table orders and set up real-time sync
   useEffect(() => {
     const fetchTableKots = async () => {
-      const { data, error } = await supabase
-        .from('table_orders')
-        .select('*')
-        .in('status', ['placed', 'accepted', 'ready', 'served'])
+      try {
+        const { data: cookingKots } = await supabase
+          .from('table_orders')
+          .select('id, session_id, table_number, round_number, items, status, kot_number, special_instructions, placed_at')
+          .in('status', ['placed', 'accepted'])
 
-      if (!error && data) {
-        setTableKots(data)
+        const { data: historyKots } = await supabase
+          .from('table_orders')
+          .select('id, session_id, table_number, round_number, items, status, kot_number, special_instructions, placed_at, served_at')
+          .in('status', ['ready', 'served'])
+          .order('placed_at', { ascending: false })
+          .limit(12)
+
+        const merged = [...(cookingKots || []), ...(historyKots || [])]
+        setTableKots(merged)
+      } catch (err) {
+        console.warn('Failed to fetch table KOTs:', err)
       }
     }
 

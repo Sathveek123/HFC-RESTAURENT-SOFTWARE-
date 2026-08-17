@@ -63,6 +63,13 @@ export default function AdminTablesPage() {
   const [newCapacity, setNewCapacity] = useState(4)
   const [newIsActive, setNewIsActive] = useState(true)
 
+  // Edit Table Form state
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [editingTable, setEditingTable] = useState<TableInfo | null>(null)
+  const [editTableName, setEditTableName] = useState('')
+  const [editCapacity, setEditCapacity] = useState(4)
+  const [editIsActive, setEditIsActive] = useState(true)
+
   // QR Tent configuration state
   const [qrPrintTable, setQrPrintTable] = useState<TableInfo | null>(null)
 
@@ -96,28 +103,34 @@ export default function AdminTablesPage() {
     } catch (_) {}
   }
 
-  // 1. Initial Load of Tables, Sessions, and Rounds
+  // 1. Optimized Initial Load (minimizes data size for egress limit protection)
   const loadData = async () => {
     setLoading(true)
     try {
       const { data: tbls } = await supabase
         .from('restaurant_tables')
-        .select('*')
+        .select('id, table_number, table_name, capacity, is_active, qr_code_url')
         .order('table_number', { ascending: true })
 
       const { data: sss } = await supabase
         .from('table_sessions')
-        .select('*')
+        .select('id, table_id, table_number, status, started_at, total_amount, payment_method, payment_status, notes')
         .in('status', ['active', 'payment_pending'])
 
-      const { data: rnds } = await supabase
-        .from('table_orders')
-        .select('*')
-        .order('placed_at', { ascending: true })
+      let activeRounds: any[] = []
+      if (sss && sss.length > 0) {
+        const activeSessionIds = sss.map(s => s.id)
+        const { data: rnds } = await supabase
+          .from('table_orders')
+          .select('id, session_id, table_number, round_number, items, subtotal, gst, total, status, kot_number, special_instructions, placed_at')
+          .in('session_id', activeSessionIds)
+          .order('placed_at', { ascending: true })
+        if (rnds) activeRounds = rnds
+      }
 
       if (tbls) setTables(tbls)
-      if (sss) setSessions(sss)
-      if (rnds) setRounds(rnds)
+      if (sss) setSessions(sss as ActiveSession[])
+      setRounds(activeRounds as KOTRound[])
     } catch (e) {
       toast.error('Failed to load table data')
     }
@@ -201,6 +214,34 @@ export default function AdminTablesPage() {
       }
     } catch (e) {
       toast.error('Failed to save table')
+    }
+  }
+
+  // 5b. Actions: Edit Table Configuration
+  const handleEditTable = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingTable) return
+
+    try {
+      const { error } = await supabase
+        .from('restaurant_tables')
+        .update({
+          table_name: editTableName || `Table ${editingTable.table_number}`,
+          capacity: editCapacity,
+          is_active: editIsActive
+        })
+        .eq('id', editingTable.id)
+
+      if (error) {
+        toast.error('Error updating table: ' + error.message)
+      } else {
+        toast.success(`Table ${editingTable.table_number} updated successfully!`)
+        setIsEditModalOpen(false)
+        setEditingTable(null)
+        loadData()
+      }
+    } catch (e) {
+      toast.error('Failed to update table')
     }
   }
 
@@ -465,12 +506,26 @@ export default function AdminTablesPage() {
                   {selectedTable.table_name || 'Physical table session'}
                 </p>
               </div>
-              <button
-                onClick={() => setSelectedTable(null)}
-                className="p-1.5 text-brand-muted hover:text-brand-black transition-colors rounded-full hover:bg-white"
-              >
-                <X size={18} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setEditingTable(selectedTable)
+                    setEditTableName(selectedTable.table_name || '')
+                    setEditCapacity(selectedTable.capacity)
+                    setEditIsActive(selectedTable.is_active)
+                    setIsEditModalOpen(true)
+                  }}
+                  className="text-[11px] font-brand font-bold text-brand-red hover:underline cursor-pointer bg-brand-redLight px-2.5 py-1 rounded-[6px]"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => setSelectedTable(null)}
+                  className="p-1.5 text-brand-muted hover:text-brand-black transition-colors rounded-full hover:bg-white"
+                >
+                  <X size={18} />
+                </button>
+              </div>
             </div>
 
             {/* Session Actions Body */}
@@ -720,6 +775,105 @@ export default function AdminTablesPage() {
           </div>
         </div>
       )}
+
+      {/* 4b. Edit Table Modal */}
+      {isEditModalOpen && editingTable && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-[16px] border border-brand-border shadow-xl w-full max-w-[420px] p-6 animate-scale-up">
+            <div className="flex justify-between items-center pb-4 border-b border-brand-border">
+              <h3 className="font-display font-bold text-[17px] text-brand-black flex items-center gap-2">
+                ✏️ Edit Table {editingTable.table_number}
+              </h3>
+              <button
+                onClick={() => {
+                  setIsEditModalOpen(false)
+                  setEditingTable(null)
+                }}
+                className="p-1 text-brand-muted hover:text-brand-black transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditTable} className="mt-4 space-y-4">
+              <div>
+                <label className="block text-[11.5px] font-brand font-bold text-brand-black uppercase tracking-wider mb-1.5">
+                  Table Number
+                </label>
+                <input
+                  type="text"
+                  disabled
+                  value={editingTable.table_number}
+                  className="w-full p-2.5 border border-brand-border rounded-btn bg-brand-surface text-[13.5px] font-body text-brand-muted cursor-not-allowed select-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11.5px] font-brand font-bold text-brand-black uppercase tracking-wider mb-1.5">
+                  Table Description / Name (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="E.g., Window Booth A, Private Room"
+                  value={editTableName}
+                  onChange={e => setEditTableName(e.target.value)}
+                  className="w-full p-2.5 border border-brand-border rounded-btn focus:outline-brand-red bg-brand-surface text-[13.5px] font-body"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11.5px] font-brand font-bold text-brand-black uppercase tracking-wider mb-1.5">
+                  Seating Capacity
+                </label>
+                <select
+                  value={editCapacity}
+                  onChange={e => setEditCapacity(Number(e.target.value))}
+                  className="w-full p-2.5 border border-brand-border rounded-btn focus:outline-brand-red bg-brand-surface text-[13.5px] font-body"
+                >
+                  <option value={2}>2 Persons</option>
+                  <option value={4}>4 Persons</option>
+                  <option value={6}>6 Persons</option>
+                  <option value={8}>8 Persons</option>
+                  <option value={12}>12 Persons</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="editIsActive"
+                  checked={editIsActive}
+                  onChange={e => setEditIsActive(e.target.checked)}
+                  className="w-4 h-4 text-brand-red focus:ring-brand-red border-brand-border rounded"
+                />
+                <label htmlFor="editIsActive" className="text-[13px] font-body font-semibold text-brand-black select-none">
+                  Available for Dine-in
+                </label>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t border-brand-border">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false)
+                    setEditingTable(null)
+                  }}
+                  className="flex-1 py-2.5 border border-brand-border rounded-btn font-brand font-semibold text-[13px] text-brand-body hover:bg-brand-surface cursor-pointer text-center"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2.5 bg-brand-red hover:bg-brand-redHover text-white rounded-btn font-brand font-bold text-[13px] cursor-pointer text-center"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
 
       {/* 5. A5 Printable QR tent helper overlay (Visible ONLY during window.print()) */}
       {qrPrintTable && (
