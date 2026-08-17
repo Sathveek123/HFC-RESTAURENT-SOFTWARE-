@@ -68,13 +68,6 @@ export default function AdminTablesPage() {
 
   // Timer reference for elapsed times refresh
   const [timeTicker, setTimeTicker] = useState(0)
-  const [origin, setOrigin] = useState('https://hfc-restaurent-software.vercel.app')
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setOrigin(window.location.origin)
-    }
-  }, [])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -742,7 +735,7 @@ export default function AdminTablesPage() {
 
           {/* QR Code Container */}
           <div className="flex flex-col items-center p-8 border-4 border-brand-red rounded-[24px] bg-white shadow-md max-w-sm">
-            <QRCodeSVG value={`${origin}/table/${qrPrintTable.table_number}`} size={260} level="H" />
+            <QRCodeSVG value={`https://hfc-restaurent-software.vercel.app/table/${qrPrintTable.table_number}`} size={260} level="H" />
             
             <div className="mt-6 bg-brand-red text-white font-brand font-black text-[24px] px-8 py-2 rounded-full">
               TABLE {qrPrintTable.table_number}
