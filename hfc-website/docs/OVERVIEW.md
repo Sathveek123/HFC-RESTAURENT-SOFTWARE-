@@ -1,6 +1,6 @@
 # 🏗️ HFC Restaurant Software — Project Overview
 
-> **Production URL:** https://hfc-restaurant-software.vercel.app  
+> **Production URL:** https://hfc-restaurent-software.vercel.app  
 > **Supabase Project:** cmwsffhenpckwkwgnmsy  
 > **Stack:** Next.js 16.3 · TypeScript · Tailwind CSS v4 · Supabase · Zustand · Vercel
 

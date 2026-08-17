@@ -2,7 +2,7 @@
 
 > **HFC Consultancy Services** — Premium Food & F&B Consultancy  
 > Full-stack Next.js application: Customer Website + Admin Panel + Delivery Agent Portal  
-> **Production URL:** https://hfc-restaurant-software.vercel.app
+> **Production URL:** https://hfc-restaurent-software.vercel.app
 
 ---
 
@@ -39,11 +39,11 @@ npm run dev        # http://localhost:3000
 
 | Surface | URL |
 |---------|-----|
-| Customer Website | `https://hfc-restaurant-software.vercel.app/` |
-| Admin Login | `https://hfc-restaurant-software.vercel.app/admin/login` |
-| Admin Dashboard | `https://hfc-restaurant-software.vercel.app/admin/dashboard` |
-| Agent Login | `https://hfc-restaurant-software.vercel.app/agent/login` |
-| Order Tracker | `https://hfc-restaurant-software.vercel.app/track/[orderId]` |
+| Customer Website | `https://hfc-restaurent-software.vercel.app/` |
+| Admin Login | `https://hfc-restaurent-software.vercel.app/admin/login` |
+| Admin Dashboard | `https://hfc-restaurent-software.vercel.app/admin/dashboard` |
+| Agent Login | `https://hfc-restaurent-software.vercel.app/agent/login` |
+| Order Tracker | `https://hfc-restaurent-software.vercel.app/track/[orderId]` |
 
 ## 🔐 Access Credentials
 

@@ -154,7 +154,7 @@ Full regex scan: `raj123|sur123|hfc2024|password123` across all `.ts`, `.tsx`, `
 - **Issue:** Reverse geocoding in `CartDrawer.tsx` had no timeout. If OSM was slow or rate-limiting the IP, the UI would hang indefinitely during address lookup.
 - **Fix:**
   - Wrapped the fetch in `AbortController` with a 5-second timeout — if OSM doesn't respond, checkout continues with manual address entry
-  - Added `User-Agent: HFC-Restaurant-Software-Client/1.0 (info@hfcconsultancy.com)` header to comply with [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/) and avoid IP blocks
+  - Added `User-Agent: HFC-Restaurent-Software-Client/1.0 (info@hfcconsultancy.com)` header to comply with [Nominatim usage policy](https://operations.osmfoundation.org/policies/nominatim/) and avoid IP blocks
 
 #### 18. Dynamic Phone / WhatsApp / UPI Configuration
 - **Issue:** `lib/whatsapp.ts` had `MERCHANT_PHONE` and `MERCHANT_UPI_ID` as hardcoded constants. Footer had hardcoded `9912799855`. Error boundary fallbacks had hardcoded numbers. Admin bills had hardcoded UPI VPA. Changing any contact number required a code deployment.

@@ -1,6 +1,6 @@
 # 🌐 HFC Customer Website — Documentation
 
-> **URL:** https://hfc-restaurant-software.vercel.app  
+> **URL:** https://hfc-restaurent-software.vercel.app  
 > **Route:** `/`  
 > **File:** `app/page.tsx`
 

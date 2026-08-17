@@ -3,7 +3,7 @@
 > **Last Updated:** August 14, 2026  
 > **Status:** 100% Production Live  
 > **Supabase Project:** `cmwsffhenpckwkwgnmsy`  
-> **Production URL:** `https://hfc-restaurant-software.vercel.app`
+> **Production URL:** `https://hfc-restaurent-software.vercel.app`
 
 ---
 
@@ -535,12 +535,12 @@ GRANT EXECUTE ON FUNCTION public.sync_setting(TEXT, JSONB) TO anon, authenticate
 
 | Environment | URL |
 |-------------|-----|
-| Production | `https://hfc-restaurant-software.vercel.app` |
-| Admin Panel | `https://hfc-restaurant-software.vercel.app/admin` |
-| Delivery Portal | `https://hfc-restaurant-software.vercel.app/agent` |
+| Production | `https://hfc-restaurent-software.vercel.app` |
+| Admin Panel | `https://hfc-restaurent-software.vercel.app/admin` |
+| Delivery Portal | `https://hfc-restaurent-software.vercel.app/agent` |
 | Supabase Dashboard | `https://supabase.com/dashboard/project/cmwsffhenpckwkwgnmsy` |
 | Supabase SQL Editor | `https://supabase.com/dashboard/project/cmwsffhenpckwkwgnmsy/editor` |
-| Vercel Dashboard | `https://vercel.com/sathveek12345-3432s-projects/hfc-restaurant-software` |
+| Vercel Dashboard | `https://vercel.com/sathveek12345-3432s-projects/hfc-restaurent-software` |
 
 ### Deploy Command
 ```bash

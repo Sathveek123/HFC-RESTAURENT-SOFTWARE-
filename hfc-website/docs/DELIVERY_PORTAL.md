@@ -1,6 +1,6 @@
 # 🛵 HFC Delivery Agent Portal — Complete Documentation
 
-> **URL:** https://hfc-restaurant-software.vercel.app/agent  
+> **URL:** https://hfc-restaurent-software.vercel.app/agent  
 > **Login:** `/agent/login`  
 > **Auth:** Supabase Auth JWT based authentication (delivery agent claims check)  
 > **Persistence:** `localStorage` key `hfc-agent-session` (agent ID)
