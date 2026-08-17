@@ -59,7 +59,7 @@ const DEFAULT_SETTINGS: any = {
   deliveryFee: 50,
   freeDeliveryAbove: 500,
 }
-const DEFAULT_PROMOTIONS: any = { coupons: [], bannerText: null, popupImage: null }
+const DEFAULT_PROMOTIONS: any = { rewardTiers: [], coupons: [], offers: [] }
 settingsCache['site_settings'] = { value: DEFAULT_SETTINGS, expiresAt: Date.now() + 15 * 1000 }
 settingsCache['promotions'] = { value: DEFAULT_PROMOTIONS, expiresAt: Date.now() + 15 * 1000 }
 

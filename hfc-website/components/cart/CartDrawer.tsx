@@ -53,12 +53,29 @@ export default function CartDrawer() {
   const subtotal = getSubtotal()
 
   // Free delivery threshold evaluated on pre-discount subtotal
-  const isFreeDelivery = subtotal >= (settings?.freeDeliveryAbove ?? 500)
+  // ALSO waive delivery charge if a free-delivery coupon was applied
+  const hasFreeDeliveryCoupon = appliedCoupon?.discountType === 'free-delivery'
+  const isFreeDelivery = hasFreeDeliveryCoupon || subtotal >= (settings?.freeDeliveryAbove ?? 500)
   const deliveryCharge = orderType === 'delivery' ? (isFreeDelivery ? 0 : (settings?.deliveryFee ?? 40)) : 0
 
-  // Taxable amount & GST
+  // Taxable amount & GST — respects gstMode from Settings:
+  //   'exclusive' = GST added ON TOP of subtotal (restaurant standard)
+  //   'inclusive' = GST is ALREADY baked into menu prices → NO extra charge at checkout
+  //   'none'      = no GST charged
+  const gstMode: 'none' | 'inclusive' | 'exclusive' = settings?.gstMode ?? 'exclusive'
+  const gstPercent = settings?.gstPercent ?? 5
   const taxableAmount = Math.max(0, subtotal - discountAmount)
-  const gst = Math.round(taxableAmount * (settings?.gstPercent ? settings.gstPercent / 100 : 0.05) * 100) / 100
+
+  let gst = 0
+  if (gstMode === 'exclusive') {
+    gst = Math.round(taxableAmount * (gstPercent / 100) * 100) / 100
+  } else if (gstMode === 'inclusive') {
+    // GST is already in menu prices — nothing to add at checkout
+    gst = 0
+  } else {
+    // gstMode === 'none' — no GST charged
+    gst = 0
+  }
 
   // Final Total
   const total = taxableAmount + gst + deliveryCharge
@@ -194,7 +211,7 @@ export default function CartDrawer() {
     return Object.keys(newErrors).length === 0
   }
 
-  // Step 1: Build order + open WhatsApp — but DON'T save yet
+  // Step 1: Build order + open WhatsApp — pre-save to database in background
   const handleOpenWhatsApp = () => {
     if (!validateForm() || isSubmitting) return
     setIsSubmitting(true)
@@ -226,6 +243,19 @@ export default function CartDrawer() {
       updatedAt: new Date().toISOString(),
       timestamp: Date.now(),
     }
+
+    // Persist order to database immediately in background to prevent lost orders
+    try {
+      fetch('/api/orders/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order: newOrder }),
+      }).then(res => {
+        if (!res.ok) console.warn('Pre-save order returned error response')
+      }).catch(err => {
+        console.warn('Pre-save order network failure:', err)
+      })
+    } catch (_) {}
 
     // Open WhatsApp — user must manually tap SEND
     openWhatsAppLink(newOrder)
@@ -386,13 +416,37 @@ export default function CartDrawer() {
 
                   {/* Highlighted Total Bar */}
                   <div className="mt-6 p-4 rounded-card bg-brand-redLight border border-[rgba(204,0,0,0.12)] space-y-2">
-                    {discountAmount > 0 && (
-                      <div className="flex justify-between font-body text-[13px] text-green-700">
-                        <span>Discount ({appliedCoupon?.code}):</span>
-                        <span>- ₹{discountAmount}</span>
+                    <div className="flex justify-between font-body text-[13px] text-brand-body">
+                      <span>Subtotal</span>
+                      <span className="text-brand-black font-semibold">₹{subtotal.toLocaleString('en-IN')}</span>
+                    </div>
+                    {gstMode === 'exclusive' && gst > 0 && (
+                      <div className="flex justify-between font-body text-[13px] text-brand-body">
+                        <span>GST ({gstPercent}%)</span>
+                        <span className="text-brand-black font-semibold">₹{gst.toLocaleString('en-IN')}</span>
                       </div>
                     )}
-                    <div className="flex items-center justify-between">
+                    {gstMode === 'inclusive' && (
+                      <div className="flex justify-between font-body text-[12px] text-brand-muted italic">
+                        <span>GST ({gstPercent}%)</span>
+                        <span>Already in menu prices</span>
+                      </div>
+                    )}
+                    {orderType === 'delivery' && (
+                      <div className="flex justify-between font-body text-[13px] text-brand-body">
+                        <span>Delivery charge {hasFreeDeliveryCoupon ? '(FREEBY coupon applied)' : isFreeDelivery ? `(orders above ₹${settings?.freeDeliveryAbove ?? 500})` : ''}</span>
+                        <span className={deliveryCharge > 0 ? 'text-brand-black font-semibold' : 'text-green-700 font-semibold'}>
+                          {deliveryCharge > 0 ? `₹${deliveryCharge.toLocaleString('en-IN')}` : 'FREE'}
+                        </span>
+                      </div>
+                    )}
+                    {discountAmount > 0 && (
+                      <div className="flex justify-between font-body text-[13px] text-green-700">
+                        <span>Discount ({appliedCoupon?.code})</span>
+                        <span>- ₹{discountAmount.toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
+                    <div className="pt-2 mt-2 border-t border-[rgba(204,0,0,0.15)] flex items-center justify-between">
                       <span className="font-brand font-bold text-[16px] text-brand-black">Total:</span>
                       <span className="font-brand font-black text-[22px] text-brand-red">
                         ₹ {total.toLocaleString('en-IN')}

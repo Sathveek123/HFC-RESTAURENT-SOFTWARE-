@@ -98,9 +98,40 @@ INSERT INTO public.settings (key, value, updated_at) VALUES
 (
     'promotions',
     jsonb_build_object(
-        'coupons', jsonb_build_array(),
-        'bannerText', NULL,
-        'popupImage', NULL
+        'rewardTiers', jsonb_build_array(),
+        'coupons', jsonb_build_array(
+            jsonb_build_object(
+                'id', 'cp-seed-1',
+                'code', 'HFC50',
+                'discountType', 'percent',
+                'discountValue', 50,
+                'maxDiscountCap', 150,
+                'minOrderAmount', 300,
+                'usageLimit', 100,
+                'usedCount', 0,
+                'validFrom', '2026-08-01T00:00:00.000Z',
+                'validUntil', '2026-12-31T23:59:59.000Z',
+                'isActive', true,
+                'applicableCustomerPhone', NULL,
+                'createdAt', NOW()::text
+            ),
+            jsonb_build_object(
+                'id', 'cp-seed-2',
+                'code', 'FREEBY',
+                'discountType', 'free-delivery',
+                'discountValue', NULL,
+                'maxDiscountCap', NULL,
+                'minOrderAmount', 250,
+                'usageLimit', 500,
+                'usedCount', 0,
+                'validFrom', '2026-08-01T00:00:00.000Z',
+                'validUntil', '2026-12-31T23:59:59.000Z',
+                'isActive', true,
+                'applicableCustomerPhone', NULL,
+                'createdAt', NOW()::text
+            )
+        ),
+        'offers', jsonb_build_array()
     ),
     NOW()
 )
@@ -112,7 +143,6 @@ CREATE TABLE IF NOT EXISTS public.agents (
     name TEXT NOT NULL,
     whatsapp TEXT NOT NULL,
     username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL DEFAULT '123',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     vehicle_type TEXT,
     coverage_area TEXT,
@@ -132,6 +162,10 @@ CREATE TABLE IF NOT EXISTS public.bills (
     discount_amount NUMERIC(10,2) NOT NULL DEFAULT 0,
     total NUMERIC(10,2) NOT NULL DEFAULT 0,
     payment_status TEXT NOT NULL DEFAULT 'unpaid',
+    items JSONB NOT NULL DEFAULT '[]'::jsonb,
+    payment_method TEXT NOT NULL DEFAULT 'Cash',
+    order_type TEXT NOT NULL DEFAULT 'dine-in',
+    coupon_code TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -208,18 +242,25 @@ $$;
 -- Explicitly grant execute permission to anon and authenticated roles
 GRANT EXECUTE ON FUNCTION public.get_order_by_id(TEXT) TO anon, authenticated, service_role;
 
--- ─── 8. GET ALL ORDERS (ADMIN) — SECURITY DEFINER bypasses RLS ──────────────
--- Admin panel calls this instead of direct SELECT so it always works,
--- even before the admin's Supabase Auth session is confirmed.
+-- ─── 8. GET ALL ORDERS (ADMIN) — SECURITY DEFINER bypasses RLS
+-- Admin panel calls this instead of direct SELECT so it always works.
+-- Access is restricted to authenticated admins.
 CREATE OR REPLACE FUNCTION public.get_all_orders()
 RETURNS SETOF public.orders
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
-  SELECT * FROM public.orders ORDER BY created_at DESC;
+BEGIN
+  IF COALESCE((auth.jwt() -> 'user_metadata' ->> 'role'), '') <> 'admin' THEN
+    RAISE EXCEPTION 'Access Denied: Admin privileges required';
+  END IF;
+  
+  RETURN QUERY SELECT * FROM public.orders ORDER BY created_at DESC;
+END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_all_orders() TO anon, authenticated, service_role;
+REVOKE EXECUTE ON FUNCTION public.get_all_orders() FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.get_all_orders() TO authenticated;
 
 -- ─── 9. CREATE ORDER (CUSTOMER) — SECURITY DEFINER bypasses RLS INSERT ───────
 -- Customer checkout calls this as RPC fallback if direct INSERT fails (RLS blocked).
@@ -349,14 +390,23 @@ WITH CHECK ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
 -- Bypasses RLS so agent synchronization works across devices without requiring JWT.
 
 -- get_all_agents: retrieves all agents
+-- Access is restricted strictly to authenticated admins.
 CREATE OR REPLACE FUNCTION public.get_all_agents()
 RETURNS SETOF public.agents
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
-  SELECT * FROM public.agents ORDER BY created_at ASC;
+BEGIN
+  IF COALESCE((auth.jwt() -> 'user_metadata' ->> 'role'), '') <> 'admin' THEN
+    RAISE EXCEPTION 'Access Denied: Admin privileges required';
+  END IF;
+
+  RETURN QUERY SELECT * FROM public.agents ORDER BY created_at ASC;
+END;
 $$;
-GRANT EXECUTE ON FUNCTION public.get_all_agents() TO anon, authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.get_all_agents() FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.get_all_agents() TO authenticated;
 
 -- sync_agent: upserts an agent record
 CREATE OR REPLACE FUNCTION public.sync_agent(agent_row JSONB)
@@ -365,15 +415,18 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+  IF COALESCE((auth.jwt() -> 'user_metadata' ->> 'role'), '') <> 'admin' THEN
+    RAISE EXCEPTION 'Access Denied: Admin privileges required';
+  END IF;
+
   INSERT INTO public.agents (
-    id, name, whatsapp, username, password, is_active, vehicle_type, coverage_area, total_deliveries, created_at
+    id, name, whatsapp, username, is_active, vehicle_type, coverage_area, total_deliveries, created_at
   )
   VALUES (
     agent_row->>'id',
     agent_row->>'name',
     agent_row->>'whatsapp',
     agent_row->>'username',
-    COALESCE(agent_row->>'password', '123'),
     COALESCE((agent_row->>'is_active')::BOOLEAN, true),
     agent_row->>'vehicle_type',
     agent_row->>'coverage_area',
@@ -384,24 +437,33 @@ BEGIN
     name = EXCLUDED.name,
     whatsapp = EXCLUDED.whatsapp,
     username = EXCLUDED.username,
-    password = EXCLUDED.password,
     is_active = EXCLUDED.is_active,
     vehicle_type = EXCLUDED.vehicle_type,
     coverage_area = EXCLUDED.coverage_area,
     total_deliveries = EXCLUDED.total_deliveries;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.sync_agent(JSONB) TO anon, authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.sync_agent(JSONB) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.sync_agent(JSONB) TO authenticated;
 
 -- delete_agent_by_id: deletes an agent record
 CREATE OR REPLACE FUNCTION public.delete_agent_by_id(agent_id TEXT)
 RETURNS void
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
+BEGIN
+  IF COALESCE((auth.jwt() -> 'user_metadata' ->> 'role'), '') <> 'admin' THEN
+    RAISE EXCEPTION 'Access Denied: Admin privileges required';
+  END IF;
+
   DELETE FROM public.agents WHERE id = agent_id;
+END;
 $$;
-GRANT EXECUTE ON FUNCTION public.delete_agent_by_id(TEXT) TO anon, authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.delete_agent_by_id(TEXT) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.delete_agent_by_id(TEXT) TO authenticated;
 
 -- ─── 9. SECURITY DEFINER BILLS FUNCTIONS & TRIGGERS ──────────────────────────────
 
@@ -423,11 +485,13 @@ BEGIN
   
   INSERT INTO public.bills (
     bill_no, order_id, customer_name, date, subtotal, gst, 
-    delivery_charge, discount_amount, total, payment_status, created_at
+    delivery_charge, discount_amount, total, payment_status, 
+    items, payment_method, order_type, coupon_code, created_at
   )
   VALUES (
     new_bill_no, NEW.id, NEW.customer_name, NEW.created_at, NEW.subtotal, NEW.gst,
-    NEW.delivery_charge, NEW.discount_amount, NEW.total, NEW.payment_status, NEW.created_at
+    NEW.delivery_charge, NEW.discount_amount, NEW.total, NEW.payment_status, 
+    NEW.items, NEW.payment_method, NEW.order_type, NEW.coupon_code, NEW.created_at
   )
   ON CONFLICT (bill_no) DO NOTHING;
   
@@ -471,18 +535,31 @@ RETURNS TABLE (
   discount_amount NUMERIC(10,2),
   total NUMERIC(10,2),
   payment_status TEXT,
+  items JSONB,
+  payment_method TEXT,
+  order_type TEXT,
+  coupon_code TEXT,
   created_at TIMESTAMPTZ
 )
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
-  SELECT 
-    bill_no, order_id, customer_name, date, subtotal, gst, 
-    delivery_charge, discount_amount, total, payment_status, created_at
-  FROM public.bills
-  ORDER BY date DESC;
+BEGIN
+  IF COALESCE((auth.jwt() -> 'user_metadata' ->> 'role'), '') <> 'admin' THEN
+    RAISE EXCEPTION 'Access Denied: Admin privileges required';
+  END IF;
+
+  RETURN QUERY SELECT 
+    b.bill_no, b.order_id, b.customer_name, b.date, b.subtotal, b.gst, 
+    b.delivery_charge, b.discount_amount, b.total, b.payment_status,
+    b.items, b.payment_method, b.order_type, b.coupon_code, b.created_at
+  FROM public.bills b
+  ORDER BY b.date DESC;
+END;
 $$;
-GRANT EXECUTE ON FUNCTION public.get_all_bills() TO anon, authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.get_all_bills() FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.get_all_bills() TO authenticated;
 
 -- ─── 10. SECURITY DEFINER SETTINGS SYNC FUNCTIONS ──────────────────────────
 
@@ -555,7 +632,9 @@ BEGIN
     updated_at    = NOW();
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.sync_product(JSONB) TO anon, authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.sync_product(JSONB) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.sync_product(JSONB) TO authenticated;
 
 -- Enable Realtime on products table so menu updates appear on customer pages instantly
 DO $$
@@ -577,6 +656,10 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 AS $$
 BEGIN
+  IF COALESCE((auth.jwt() -> 'user_metadata' ->> 'role'), '') <> 'admin' THEN
+    RAISE EXCEPTION 'Access Denied: Admin privileges required';
+  END IF;
+
   INSERT INTO public.settings (key, value, updated_at)
   VALUES (p_key, p_value, NOW())
   ON CONFLICT (key) DO UPDATE SET
@@ -584,7 +667,9 @@ BEGIN
     updated_at = EXCLUDED.updated_at;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION public.sync_setting(TEXT, JSONB) TO anon, authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.sync_setting(TEXT, JSONB) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.sync_setting(TEXT, JSONB) TO authenticated;
 
 -- Enable Realtime on settings table to broadcast changes to clients instantly
 DO $$
@@ -596,6 +681,302 @@ BEGIN
           AND tablename = 'settings'
     ) THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.settings;
+    END IF;
+END $$;
+
+
+-- ─── 11. INVENTORY SYSTEM TABLES ──────────────────────────────────────────────
+
+-- Ingredients master list
+CREATE TABLE IF NOT EXISTS public.ingredients (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  unit TEXT NOT NULL,          -- 'KG', 'L', 'G', 'PCS'
+  category TEXT,               -- 'Protein', 'Oil', 'Dry', 'Veg', 'Spices'
+  cost_per_unit NUMERIC(10,2) NOT NULL DEFAULT 0,
+  min_stock NUMERIC(10,3) NOT NULL DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS on ingredients
+ALTER TABLE public.ingredients ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated reads on ingredients" ON public.ingredients;
+CREATE POLICY "Allow authenticated reads on ingredients" ON public.ingredients FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow admin write on ingredients" ON public.ingredients;
+CREATE POLICY "Allow admin write on ingredients" ON public.ingredients FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+
+-- Daily opening stock inputs (entered by owner/admin)
+CREATE TABLE IF NOT EXISTS public.stock_entries (
+  id TEXT PRIMARY KEY,
+  date DATE NOT NULL,
+  ingredient_id TEXT REFERENCES public.ingredients(id) ON DELETE CASCADE,
+  opening_qty NUMERIC(10,3) NOT NULL DEFAULT 0,
+  inward_qty NUMERIC(10,3) NOT NULL DEFAULT 0,
+  total_available NUMERIC(10,3) NOT NULL DEFAULT 0,
+  supplier TEXT,
+  purchase_rate NUMERIC(10,2),
+  invoice_no TEXT,
+  entered_by TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT unique_date_ingredient_stock UNIQUE (date, ingredient_id)
+);
+
+-- Enable RLS on stock_entries
+ALTER TABLE public.stock_entries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated reads on stock_entries" ON public.stock_entries;
+CREATE POLICY "Allow authenticated reads on stock_entries" ON public.stock_entries FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow admin write on stock_entries" ON public.stock_entries;
+CREATE POLICY "Allow admin write on stock_entries" ON public.stock_entries FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+
+-- Recipe mappings (dish -> ingredients mapping)
+CREATE TABLE IF NOT EXISTS public.recipes (
+  id TEXT PRIMARY KEY,
+  product_id TEXT NOT NULL, -- Links to productItem.id
+  product_name TEXT NOT NULL,
+  ingredient_id TEXT REFERENCES public.ingredients(id) ON DELETE CASCADE,
+  quantity_per_unit NUMERIC(10,4) NOT NULL DEFAULT 0, -- e.g. 0.2500 kg
+  unit TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT unique_product_ingredient_recipe UNIQUE (product_id, ingredient_id)
+);
+
+-- Enable RLS on recipes
+ALTER TABLE public.recipes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated reads on recipes" ON public.recipes;
+CREATE POLICY "Allow authenticated reads on recipes" ON public.recipes FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow admin write on recipes" ON public.recipes;
+CREATE POLICY "Allow admin write on recipes" ON public.recipes FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+
+-- Kitchen EOD closing count submissions
+CREATE TABLE IF NOT EXISTS public.kitchen_closing (
+  id TEXT PRIMARY KEY,
+  date DATE NOT NULL,
+  ingredient_id TEXT REFERENCES public.ingredients(id) ON DELETE CASCADE,
+  theoretical_consumed NUMERIC(10,3) NOT NULL DEFAULT 0,
+  actual_remaining NUMERIC(10,3) NOT NULL DEFAULT 0,
+  actual_consumed NUMERIC(10,3) NOT NULL DEFAULT 0,
+  wastage_reported NUMERIC(10,3) DEFAULT 0,
+  wastage_reason TEXT,
+  discrepancy NUMERIC(10,3) NOT NULL DEFAULT 0,
+  discrepancy_value NUMERIC(10,2) NOT NULL DEFAULT 0,
+  submitted_by TEXT,
+  submitted_at TIMESTAMPTZ DEFAULT NOW(),
+  reviewed_by_admin BOOLEAN DEFAULT FALSE,
+  CONSTRAINT unique_date_ingredient_closing UNIQUE (date, ingredient_id)
+);
+
+-- Enable RLS on kitchen_closing
+ALTER TABLE public.kitchen_closing ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated reads on kitchen_closing" ON public.kitchen_closing;
+CREATE POLICY "Allow authenticated reads on kitchen_closing" ON public.kitchen_closing FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow authenticated write on kitchen_closing" ON public.kitchen_closing;
+CREATE POLICY "Allow authenticated write on kitchen_closing" ON public.kitchen_closing FOR ALL TO authenticated USING (true);
+
+-- Daily stock totals summary log
+CREATE TABLE IF NOT EXISTS public.daily_stock_summary (
+  id TEXT PRIMARY KEY,
+  date DATE NOT NULL,
+  ingredient_id TEXT REFERENCES public.ingredients(id) ON DELETE CASCADE,
+  opening_qty NUMERIC(10,3) NOT NULL DEFAULT 0,
+  inward_qty NUMERIC(10,3) NOT NULL DEFAULT 0,
+  theoretical_consumed NUMERIC(10,3) NOT NULL DEFAULT 0,
+  actual_consumed NUMERIC(10,3) NOT NULL DEFAULT 0,
+  wastage NUMERIC(10,3) NOT NULL DEFAULT 0,
+  closing_qty NUMERIC(10,3) NOT NULL DEFAULT 0,
+  discrepancy NUMERIC(10,3) NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT 'ok', -- 'ok', 'warning', 'critical'
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  CONSTRAINT unique_date_ingredient_summary UNIQUE (date, ingredient_id)
+);
+
+-- Enable RLS on daily_stock_summary
+ALTER TABLE public.daily_stock_summary ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated reads on daily_stock_summary" ON public.daily_stock_summary;
+CREATE POLICY "Allow authenticated reads on daily_stock_summary" ON public.daily_stock_summary FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow admin write on daily_stock_summary" ON public.daily_stock_summary;
+CREATE POLICY "Allow admin write on daily_stock_summary" ON public.daily_stock_summary FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+
+-- Add Realtime replication for dynamic live dashboard updates
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+          AND schemaname = 'public' 
+          AND tablename = 'ingredients'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.ingredients;
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+          AND schemaname = 'public' 
+          AND tablename = 'stock_entries'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.stock_entries;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+          AND schemaname = 'public' 
+          AND tablename = 'recipes'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.recipes;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+          AND schemaname = 'public' 
+          AND tablename = 'kitchen_closing'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.kitchen_closing;
+    END IF;
+
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+          AND schemaname = 'public' 
+          AND tablename = 'daily_stock_summary'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.daily_stock_summary;
+    END IF;
+END $$;
+
+
+-- ─── 12. SECURE KITCHEN STAFF & IMMUTABLE CLOSING ──────────────────────────
+
+-- Kitchen staff table (PIN column removed to prevent RLS read leakage)
+CREATE TABLE IF NOT EXISTS public.kitchen_staff (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  failed_attempts INTEGER NOT NULL DEFAULT 0,
+  locked_until TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Credentials table (RLS enabled with ZERO select policies - hidden from all client roles)
+CREATE TABLE IF NOT EXISTS public.kitchen_staff_credentials (
+  staff_id TEXT PRIMARY KEY REFERENCES public.kitchen_staff(id) ON DELETE CASCADE,
+  pin TEXT NOT NULL
+);
+
+-- Enable RLS on both tables
+ALTER TABLE public.kitchen_staff ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.kitchen_staff_credentials ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow authenticated reads on kitchen_staff" ON public.kitchen_staff;
+CREATE POLICY "Allow authenticated reads on kitchen_staff" ON public.kitchen_staff FOR SELECT TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow admin write on kitchen_staff" ON public.kitchen_staff;
+CREATE POLICY "Allow admin write on kitchen_staff" ON public.kitchen_staff FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+
+-- Note: public.kitchen_staff_credentials has RLS enabled but has no SELECT/ALL policies.
+-- Hence, no client role can read pins, bypassing client-side exposure.
+
+-- Server-side PIN verification RPC with rate-limiting and lockout
+CREATE OR REPLACE FUNCTION public.verify_staff_pin(p_staff_id TEXT, p_pin TEXT)
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_db_pin TEXT;
+  v_locked_until TIMESTAMPTZ;
+  v_failed_attempts INTEGER;
+  v_success BOOLEAN := FALSE;
+BEGIN
+  -- 1. Check if account is locked out
+  SELECT locked_until, failed_attempts INTO v_locked_until, v_failed_attempts
+  FROM public.kitchen_staff
+  WHERE id = p_staff_id;
+
+  IF v_locked_until IS NOT NULL AND v_locked_until > NOW() THEN
+    RAISE EXCEPTION 'Staff account is temporarily locked due to too many failed attempts. Try again in 15 minutes.';
+  END IF;
+
+  -- 2. Fetch the correct PIN from secure table
+  SELECT pin INTO v_db_pin
+  FROM public.kitchen_staff_credentials
+  WHERE staff_id = p_staff_id;
+
+  -- 3. Verify
+  IF v_db_pin = p_pin THEN
+    -- Reset locks
+    UPDATE public.kitchen_staff
+    SET failed_attempts = 0, locked_until = NULL
+    WHERE id = p_staff_id;
+    v_success := TRUE;
+  ELSE
+    -- Increment attempts
+    IF v_failed_attempts + 1 >= 5 THEN
+      UPDATE public.kitchen_staff
+      SET failed_attempts = v_failed_attempts + 1, locked_until = NOW() + INTERVAL '15 minutes'
+      WHERE id = p_staff_id;
+    ELSE
+      UPDATE public.kitchen_staff
+      SET failed_attempts = v_failed_attempts + 1
+      WHERE id = p_staff_id;
+    END IF;
+  END IF;
+
+  RETURN v_success;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.verify_staff_pin(TEXT, TEXT) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.verify_staff_pin(TEXT, TEXT) TO authenticated;
+
+-- Database-level audit immutability triggers for kitchen closing counts
+CREATE OR REPLACE FUNCTION public.prevent_kitchen_closing_update()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'Immutability Violation: Submitted kitchen closing counts cannot be modified or updated.';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_prevent_kitchen_closing_update ON public.kitchen_closing;
+CREATE TRIGGER trigger_prevent_kitchen_closing_update
+BEFORE UPDATE ON public.kitchen_closing
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_kitchen_closing_update();
+
+CREATE OR REPLACE FUNCTION public.prevent_kitchen_closing_delete()
+RETURNS TRIGGER AS $$
+BEGIN
+  RAISE EXCEPTION 'Immutability Violation: Submitted kitchen closing counts cannot be deleted or wiped.';
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_prevent_kitchen_closing_delete ON public.kitchen_closing;
+CREATE TRIGGER trigger_prevent_kitchen_closing_delete
+BEFORE DELETE ON public.kitchen_closing
+FOR EACH ROW
+EXECUTE FUNCTION public.prevent_kitchen_closing_delete();
+
+-- Add Realtime replication for kitchen_staff
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+          AND schemaname = 'public' 
+          AND tablename = 'kitchen_staff'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.kitchen_staff;
     END IF;
 END $$;
 

@@ -7,7 +7,7 @@ import toast from 'react-hot-toast'
 import { useAgentAuthStore } from '@/store/agentAuthStore'
 import { useAgentsStore } from '@/store/agentsStore'
 import { useOrderStore, OrderRecord } from '@/store/orderStore'
-import { subscribeToAllOrdersRealtime, fetchOrdersFromSupabase, fetchAgentsFromSupabase } from '@/lib/supabaseSync'
+import { subscribeToAllOrdersRealtime, fetchOrdersFromSupabase } from '@/lib/supabaseSync'
 import AdminBadge from '@/components/admin/shared/AdminBadge'
 
 export default function AgentOrdersPage() {
@@ -27,18 +27,12 @@ export default function AgentOrdersPage() {
       upsertOrders(fetched)
     })
 
-    fetchAgentsFromSupabase().then(fetched => {
-      if (fetched && fetched.length > 0) {
-        upsertAgents(fetched)
-      }
-    })
-
     const unsubscribe = subscribeToAllOrdersRealtime((updatedOrder) => {
       upsertOrder(updatedOrder)
     })
 
     return () => unsubscribe()
-  }, [upsertOrders, upsertOrder, upsertAgents])
+  }, [upsertOrders, upsertOrder])
 
 
   // Status Filter Tabs

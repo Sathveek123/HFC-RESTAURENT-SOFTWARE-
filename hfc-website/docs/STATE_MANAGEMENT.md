@@ -78,12 +78,12 @@ interface OrderRecord {
 ### COD Auto-Pay Guard
 
 ```typescript
-// When status becomes 'delivered' for DELIVERY orders with Cash payment:
-if (status === 'delivered' && orderType === 'delivery' && paymentMethod === 'Cash' && paymentStatus !== 'paid') {
+// When status becomes 'delivered' for all orders with Cash payment (Universal auto-flip in v2.2.2):
+if (status === 'delivered' && paymentMethod === 'Cash' && paymentStatus !== 'paid') {
   paymentStatus = 'paid'  // auto-flip
   // also syncs to billsStore
 }
-// Guard: dine-in and takeaway counter payments are NOT auto-flipped
+// Note: As of v2.2.2, the orderType === 'delivery' guard has been removed so that dine-in/takeaway cash orders also flip to paid automatically upon completion.
 ```
 
 ### Duplicate Prevention
@@ -134,7 +134,7 @@ interface Agent {
 | Action | Notes |
 |--------|-------|
 | `addAgent(agent)` | Also calls `/api/admin/agents/provision` to create Supabase Auth user |
-| `updateAgent(id, updates)` | Patch any fields |
+| `updateAgent(id, updates)` | Patch fields (triggers API call to `/api/admin/agents/provision` if password/metadata is updated) |
 | `deleteAgent(id)` | Remove permanently |
 | `toggleAgentActive(id)` | Flip `isActive` boolean |
 | `incrementDeliveries(id)` | +1 to `totalDeliveries` |
@@ -432,4 +432,43 @@ syncSettingToSupabase('site_settings', publicSettings)
 
 // Private settings (API tokens — separate row):
 syncSettingToSupabase('site_settings_private', { cloudApiToken, cloudApiPhoneId })
+
+---
+
+## 🍛 `recipeStore.ts`
+
+**localStorage Key:** `hfc-recipes`  
+**Supabase Table:** `public.recipes`  
+
+### State Schema
+```typescript
+interface Recipe {
+  id: string
+  productId: string
+  productName: string
+  ingredientId: string
+  quantityPerUnit: number
+  unit: string
+}
+```
+
+### Actions
+*   `fetchRecipes()`: Fetches all recipe mapping parameters.
+*   `saveRecipeIngredients(productId, productName, rows)`: Re-seeds mapping details atomically by invoking the `save_recipe_ingredients` helper client-side.
+
+---
+
+## 🍗 `inventoryStore.ts`
+
+**localStorage Key:** `hfc-inventory`  
+**Supabase Tables:** `public.ingredients`, `public.stock_entries`, `public.kitchen_closing`, `public.daily_stock_summary`, `public.kitchen_staff`  
+
+### Actions
+*   `fetchIngredients()`: Restores master items list.
+*   `addIngredient(name, unit, category, costPerUnit, minStock)`: Appends a new item master catalog.
+*   `fetchStockEntriesForDate(date)`: Retrieves baseline opening inventories.
+*   `confirmOpeningStock(date, rows)`: Locks opening balances baseline for the day.
+*   `fetchKitchenClosingForDate(date)`: Restores logged EOD physical count reports.
+*   `submitKitchenClosing(date, rows, staffName)`: Logs actual physical count submissions, and checks discrepancies.
+*   `fetchStockSummaries()`: Loads daily audit reconciliations reports history.
 ```

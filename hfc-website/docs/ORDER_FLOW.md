@@ -47,21 +47,25 @@ At any point: → rejected | cancelled
 
 ---
 
-### Step 2 — Admin Receives Order
+### Step 2 — Admin Receives and Accepts Order
 - New order pops up on the admin panel dashboard (`/admin/orders`) in **under 0.5 seconds** via WebSockets.
 - Pulsing red dot badge on navigation bar alerts admin of unseen orders.
+- Admin clicks **"Accept"** → order status changes to `accepted` and flows to the kitchen view.
 
 ---
 
-### Step 3 — Admin Assigns Rider
+### Step 3 — Kitchen Prepares (Kitchen View Monitor)
+- The kitchen tablet monitor (`/admin/kitchen`) plays a double-tone acoustic chime to notify cooks.
+- Active cooking cards display dish lists and elapsed time warnings (Green/Amber/Red if delayed).
+- When cooking is complete, kitchen staff click **"Food Ready & Packed"** → advances order status to `ready`.
+- Order pops up under the assigned rider's **New Assignments** tab immediately.
+
+---
+
+### Step 4 — Admin Assigns Rider
 - Admin opens order details, chooses from active delivery agents in the dropdown, and assigns the order.
 - Click **"Notify agent"** opens a WhatsApp dispatch detail card to the agent.
-
----
-
-### Step 4 — Admin Marks Prepared
-- Admin clicks **"Mark Prepared"** → sets order status to `ready`.
-- Order pops up under the rider's **New Assignments** tab immediately via WebSocket broadcast.
+- *(Note: Dine-in and Takeaway orders bypass rider assignment and proceed straight from `ready` to `delivered` status).*
 
 ---
 
@@ -76,6 +80,69 @@ At any point: → rejected | cancelled
 ### Step 6 — Customer Sees Delivered Status
 - Customer track screen (`/track/[orderId]`) updates **instantly** via WebSocket channel.
 - Displays "Delivery Completed" confirmation with "Cash Payment Received ✓" indicator.
+
+---
+
+## 💰 Checkout Calculations (CartDrawer.tsx)
+
+All checkout math is run **client-side (CartDrawer.tsx) + server-side (app/api/orders/create/route.ts)** identically so the price the customer sees on screen == price on order record == price on bill.
+
+### Values Read Live from Supabase Settings (realtime)
+
+| Setting | `settingsStore` key | Default |
+|---------|---------------------|---------|
+| Delivery fee | `settings.deliveryFee` | ₹50 |
+| Free delivery above | `settings.freeDeliveryAbove` | ₹500 |
+| GST % | `settings.gstPercent` | 5 |
+| GST mode | `settings.gstMode` | `exclusive` |
+
+### Calculation Order
+
+```
+Subtotal                 = SUM (item.price × item.qty)
+Coupon discount          = applied? calculate (see coupons below)
+Taxable amount           = Subtotal − discountAmount
+GST                      = depends on gstMode (see below)
+Delivery charge          = IF orderType==='delivery' THEN
+                             IF (hasFreeDeliveryCoupon OR subtotal >= freeDeliveryAbove)
+                               THEN 0  ELSE settings.deliveryFee
+                           ELSE 0
+Total                    = Taxable + GST + Delivery
+```
+
+### GST Mode Support
+
+| Mode | Behavior at Checkout | Line Shown to Customer |
+|------|---------------------|------------------------|
+| `exclusive` (default) | GST **added on top** of subtotal at gstPercent% (restaurant standard) | `GST (5%)   ₹XX.XX` |
+| `inclusive` | GST already baked into menu prices → **NO extra charge** at checkout | `GST (5%)   Already in menu prices` (italic muted) |
+| `none` | **No GST charged** at all | GST line hidden |
+
+⚠️ **CRITICAL BUG FIXED (session Aug-14-2026):** Previously CartDrawer ALWAYS charged 5% GST regardless of `gstMode='inclusive'` or `'none'` → customers were double-taxed on every order when "GST Inclusive" was selected in Settings. Now branches correctly per mode above.
+
+### Delivery Charge Waive Rules
+
+Delivery charge is waived to 0 when BOTH of:
+1. Order type is `delivery`, AND
+2. EITHER:
+   - Subtotal (pre-discount) ≥ `settings.freeDeliveryAbove` (default ₹500), OR
+   - A valid coupon with `discountType === 'free-delivery'` was applied (e.g. `FREEBY`)
+
+⚠️ **CRITICAL BUG FIXED (session Aug-14-2026):** Server correctly waived delivery charge to 0 on FREEBY, but CartDrawer UI still displayed the old delivery charge in the totals. Now both match exactly. Customer always sees same total on screen as what's saved to the database.
+
+---
+
+## 🎫 Coupon Support at Checkout
+
+Coupon data is read from `promotionsStore` → synced from Supabase row `settings.key='promotions'`. Three discount types supported:
+
+| `coupon.discountType` | Checkout Behavior | Discount Amount |
+|---|---|---|
+| `flat` | Flat INR off | `coupon.discountValue` |
+| `percent` | Percentage off, capped at `maxDiscountCap` | `min (subtotal × coupon.discountValue / 100, coupon.maxDiscountCap)` |
+| `free-delivery` | Waive delivery charge to 0 | `0` (no subtotal discount) |
+
+**Server-side validation:** `/api/orders/create` duplicates the client-side coupon validation against the same live Supabase row to prevent tampering with browser state.
 
 ---
 
@@ -101,6 +168,11 @@ Real-time sync across all surfaces is powered by **Supabase Realtime WebSockets*
 | **Customer Tracker** (`/track/[orderId]`) | `subscribeToOrderRealtime(orderId)` | **< 0.5s** |
 | **Admin Panel** (`/admin/orders`) | `subscribeToAllOrdersRealtime()` | **< 0.5s** |
 | **Delivery Agent Portal** (`/agent/orders`) | `subscribeToAllOrdersRealtime()` | **< 0.5s** |
+| **Customer Cart Drawer** (settings/promos live) | `subscribeToSettingRealtime('site_settings'|'promotions')` | **< 1s** |
+| **Customer Menu** (product changes) | `subscribeToProductsRealtime()` | **< 1s** |
+
+### Realtime Event Types
+⚠️ **CRITICAL BUG FIXED (session Aug-14-2026):** `subscribeToSettingRealtime()` previously only listened to `event: 'UPDATE'` — the very FIRST save (which triggers an INSERT on an empty settings table) was never broadcast to customers or other admin tabs. Now listens to `event: '*'` = both INSERT + UPDATE so first-save-ever propagates live without page reload.
 
 ---
 
@@ -109,3 +181,29 @@ Real-time sync across all surfaces is powered by **Supabase Realtime WebSockets*
 Every time a new order is placed, a corresponding bill is **automatically created** in the database via the SQL trigger `auto_create_bill`:
 - Sync triggers keep order payment status and bill payment status identical on any update.
 - Admin can review overall revenue breakdowns on `/admin/bills`.
+
+## 🧾 Order API Endpoint: `/api/orders/create` (Server Checkout)
+
+The endpoint is the **server-side pricing authority** — it validates coupon rules, recomputes totals using the same algorithm as CartDrawer, and writes the authoritative row.
+
+### What It Reads from DB (real-time — not cached long-term):
+```
+settings.key = 'site_settings'   → gstPercent, gstMode, deliveryFee, freeDeliveryAbove
+settings.key = 'promotions'      → coupons[] (to re-validate & verify the applied coupon)
+```
+
+### Server-Side Coupon Validation Logic (matches client exactly):
+1. Fetch all coupons from `promotions.coupons` in DB
+2. Match case-insensitive `code === applied_code`
+3. Check isActive && usedCount < usageLimit && date between validFrom/validUntil && subtotal >= minOrderAmount
+4. Apply discount based on type
+5. If free-delivery → waive delivery charge (even if subtotal below threshold)
+
+### `DEFAULT_SETTINGS` / `DEFAULT_PROMOTIONS` Fallbacks
+If the DB row is missing (cold instance, network hiccup), the API falls back to the same shape:
+```ts
+DEFAULT_SETTINGS   = { gstPercent: 5, gstMode: 'exclusive', deliveryFee: 50, freeDeliveryAbove: 500 }
+DEFAULT_PROMOTIONS = { rewardTiers: [], coupons: [], offers: [] }   // ✅ matches promotionsStore shape
+```
+
+⚠️ **BUG FIXED (session Aug-14-2026):** Old fallback used stale shape `{ coupons:[], bannerText, popupImage }` from legacy schema — wrong keys, meant that on DB-miss scenarios coupons would silently not validate. Fallback now uses the exact promotionsStore interface `{ rewardTiers, coupons, offers }`.

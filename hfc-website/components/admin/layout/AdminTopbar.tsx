@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Bell, HelpCircle, User } from 'lucide-react'
+import { Bell, HelpCircle, User, Menu } from 'lucide-react'
 import { useOrderStore } from '@/store/orderStore'
 import AdminModal from '../shared/AdminModal'
 
@@ -63,11 +63,20 @@ export default function AdminTopbar() {
 
   return (
     <>
-      <header className="h-16 bg-white border-b border-brand-border px-8 flex items-center justify-between flex-shrink-0 z-30">
-        {/* Left dynamic title */}
-        <h1 className="font-brand font-black text-[20px] text-brand-black tracking-tight">
-          {getPageTitle()}
-        </h1>
+      <header className="h-16 bg-white border-b border-brand-border px-5 md:px-8 flex items-center justify-between flex-shrink-0 z-30">
+        {/* Left hamburger + title */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('toggle-admin-sidebar'))}
+            className="lg:hidden p-1.5 -ml-1 text-brand-body hover:text-brand-red hover:bg-brand-surface rounded-btn transition-colors cursor-pointer"
+            title="Open navigation menu"
+          >
+            <Menu size={20} />
+          </button>
+          <h1 className="font-brand font-black text-[18px] md:text-[20px] text-brand-black tracking-tight whitespace-nowrap">
+            {getPageTitle()}
+          </h1>
+        </div>
 
         {/* Right tools */}
         <div className="flex items-center gap-5">

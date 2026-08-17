@@ -127,7 +127,7 @@ export const useOrderStore = create<OrderStore>()(
         set({ orders: updatedOrders })
         syncOrderToSupabase(order)
 
-        // Auto-create bill record
+        // Trigger dynamic theoretical inventory depletion calculation on dashboard
         try {
           const { useBillsStore } = require('./billsStore')
           useBillsStore.getState().createBill(order)
@@ -170,10 +170,11 @@ export const useOrderStore = create<OrderStore>()(
         const order = get().orders.find(o => o.id === id)
         if (!order) return
 
+        const isDelivery = order.orderType === 'delivery'
         const isDeliveredStatus = status === 'delivered'
         const isCashPayment = order.paymentMethod === 'Cash'
         const isUnpaid = order.paymentStatus !== 'paid'
-        const autoPayment = isDeliveredStatus && isCashPayment && isUnpaid
+        const autoPayment = isDelivery && isDeliveredStatus && isCashPayment && isUnpaid
 
         const updatedOrder: OrderRecord = {
           ...order,

@@ -53,10 +53,10 @@ export default function HeroBrandCircle() {
       >
         <div className="flex items-center gap-2 font-brand font-semibold text-[13px] text-brand-black">
           <Utensils size={14} className="text-brand-red" />
-          <span>Menu Ready</span>
+          <span>Now Live</span>
         </div>
         <div className="w-full h-[1px] bg-brand-border my-1.5" />
-        <div className="font-body text-[12px] text-brand-body">Launch in 7 Days</div>
+        <div className="font-body text-[12px] text-brand-body">Order via WhatsApp</div>
       </motion.div>
 
       {/* Layer 4 — NEW Floating Card 3 (Mid-Left for Visual Balance) */}

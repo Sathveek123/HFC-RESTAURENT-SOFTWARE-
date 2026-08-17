@@ -17,37 +17,50 @@ export const useAgentAuthStore = create<AgentAuthStore>((set, get) => ({
   loggedInAgentId: null,
 
   login: async (username: string, password: string) => {
-    // Sync latest delivery agents from Supabase first so new accounts can log in
+    const cleanUsername = username.trim().toLowerCase()
+    const cleanPassword = password.trim()
+
+    // 1. Authenticate with Supabase Auth for RLS JWT token issuance
+    const authRes = await authenticateAgentSupabase(cleanUsername, cleanPassword)
+    if (!authRes.success) {
+      return { success: false, error: authRes.error || 'Incorrect username or password.' }
+    }
+
+    // 2. Now that we are authenticated, sync latest delivery agents from Supabase
+    let agents: Agent[] = []
     try {
       const fetched = await fetchAgentsFromSupabase()
       if (fetched && fetched.length > 0) {
         useAgentsStore.getState().upsertAgents(fetched)
+        agents = fetched
+      } else {
+        agents = useAgentsStore.getState().agents
       }
     } catch (e) {
       console.warn('Failed to sync agents on login:', e)
+      agents = useAgentsStore.getState().agents
     }
-
-    const agents = useAgentsStore.getState().agents
-    const cleanUsername = username.trim().toLowerCase()
-    const cleanPassword = password.trim()
 
     const agent = agents.find(
       a => (a.username || '').trim().toLowerCase() === cleanUsername
     )
 
-    if (!agent || (agent.password || '').trim() !== cleanPassword) {
-      return { success: false, error: 'Incorrect username or password.' }
+    if (!agent) {
+      // Sign out since profile wasn't found in agents table
+      const { supabase } = require('@/lib/supabase')
+      await supabase.auth.signOut()
+      return { success: false, error: 'Agent profile not found in kitchen records.' }
     }
 
     if (!agent.isActive) {
+      // Sign out since agent is inactive
+      const { supabase } = require('@/lib/supabase')
+      await supabase.auth.signOut()
       return {
         success: false,
         error: 'Your account is currently inactive. Contact HFC admin.'
       }
     }
-
-    // Authenticate with Supabase Auth for RLS JWT token issuance
-    await authenticateAgentSupabase(username, password)
 
     // Save session to localStorage so agent stays logged in across tab close/refresh
     if (typeof window !== 'undefined') {

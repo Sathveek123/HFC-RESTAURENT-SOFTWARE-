@@ -4,6 +4,273 @@ All notable changes to the HFC Consultancy Services application documented chron
 
 ---
 
+## [v2.5.1] — Kitchen Display System Navigation Alignment — August 15, 2026
+
+### 🍳 KDS Usability
+- **Closing Stock Navigation Link**: Added an `"EOD Closing Stock"` navigation button in the top menu control row of `/admin/kitchen` to allow kitchen staff to seamlessly access the closing count forms.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `app/admin/kitchen/page.tsx` | Added the EOD Closing Stock button to header controls |
+
+---
+
+## [v2.5.0] — HFC Inventory & Recipe Management System — August 15, 2026
+
+### 🏭 Raw Materials & Theft Prevention
+- **Database Table Migrations**: Added five PostgreSQL tables (`ingredients`, `stock_entries`, `recipes`, `kitchen_closing`, `daily_stock_summary`) with Row-Level Security (RLS) policies and Realtime publication replication enabled.
+- **State Management & Calculation Helpers**: Created Zustand stores (`recipeStore.ts`, `inventoryStore.ts`) and calculations engine (`inventoryHelpers.ts`) to compute live theoretical consumption, discrepancy metrics, and next-day procurements.
+- **Admin Inventory Dashboard Views**: Built dashboard layouts for `/admin/inventory` (Live depletion levels, KPIs), `/admin/inventory/recipes` (ingredient mapper), `/admin/inventory/stock` (opening inputs), `/admin/inventory/reports` (daily logs), and `/admin/inventory/purchase` (procurements planner with WhatsApp exports).
+- **Kitchen EOD Submission**: Built `/admin/kitchen/closing` counts submission form with PIN authorization and count values obfuscation.
+
+### Files Modified / Added
+| File | Change |
+|------|--------|
+| `supabase/schema.sql` | Appended the inventory system PostgreSQL schemas |
+| `store/recipeStore.ts` | [NEW] Zustand store managing product recipes mappings |
+| `store/inventoryStore.ts` | [NEW] Zustand store managing stock counts and closings |
+| `lib/inventoryHelpers.ts` | [NEW] Core discrepancy and purchase assistant calculations |
+| `app/admin/inventory/page.tsx` | [NEW] Main Inventory overview KPIs and stock level dashboard |
+| `app/admin/inventory/recipes/page.tsx` | [NEW] Product-to-ingredient composition recipe mapper page |
+| `app/admin/inventory/stock/page.tsx` | [NEW] Carryforward openings and inward purchases entry page |
+| `app/admin/inventory/purchase/page.tsx` | [NEW] Tomorrow's procurement planner page with WhatsApp exports |
+| `app/admin/inventory/reports/page.tsx` | [NEW] Historical daily summaries list and discrepancy indicators |
+| `app/admin/kitchen/closing/page.tsx` | [NEW] Obfuscated physical count submission page for staff |
+| `store/orderStore.ts` | Added inventory tracking reference comment inside checkout |
+
+---
+
+## [v2.4.3] — Instant Background Order Checkout Saving — August 15, 2026
+
+### 🛒 Checkout Flow Reliability
+- **Background Order Pre-Saving**: Refactored checkout submission inside `CartDrawer.tsx` to post order records to `/api/orders/create` immediately in the background as soon as "Send Order via WhatsApp" is clicked. This prevents orders from being lost if customers exit the browser tab after WhatsApp opens without returning to tap "Yes, I sent the message".
+- **RLS Insert Realignment**: Aligned the client-side direct sync fallback in `supabaseSync.ts` to execute a Postgres `insert` instead of `upsert`. This matches the `"Public create order"` RLS insert policy, allowing anonymous clients to save checkout orders successfully without requiring administrative update privileges.
+
+### Files Modified / Added
+| File | Change |
+|------|--------|
+| `components/cart/CartDrawer.tsx` | Pre-saved orders in the background when starting checkout redirect |
+| `lib/supabaseSync.ts` | Modified client-side fallback to run insert instead of upsert |
+
+---
+
+## [v2.4.2] — Netquora X IT Solutions Footer Watermark — August 14, 2026
+
+### 🌐 Customer Footer Branding
+- **Agency Watermark**: Integrated an elegant, clickable inline agency credit link `"Powered by Netquora X IT Solutions"` pointing to `https://net-quora-x-agency.vercel.app/` inside the bottom copyright strip of `Footer.tsx`. The layout automatically aligns with standard F&B/Consulting portal specs across all viewports.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `components/layout/Footer.tsx` | Appended the Netquora X IT Solutions watermark link in the copyright row |
+
+---
+
+## [v2.4.1] — Background Session Auto-Recovery & RLS Alignment — August 14, 2026
+
+### 🔑 Session Auto-Recovery
+- **Background Handshake Auto-Attempt**: Extended the `checkSession` initializer inside `adminAuthStore.ts` to automatically trigger a background Supabase login if the browser holds a local fallback authorization cache but lacks a valid Supabase Auth session. This recovers the Auth JWT and enables cloud permissions automatically on page reload without forcing the user to log out and log back in.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `store/adminAuthStore.ts` | Implemented background auto-recovery loop inside the checkSession block |
+
+---
+
+## [v2.4.0] — Await Supabase Authentication & Session State Safety — August 14, 2026
+
+### 🔑 Await Supabase Login Checks
+- **Sync Fallback to Async Wait**: Refactored `login` inside `adminAuthStore.ts` to await `authenticateAdminSupabase` before resolving. This guarantees the browser establishes a valid Supabase Auth session on successful login instead of entering in unauthenticated local offline fallback mode immediately.
+- **Offline Fallback Toast**: If Supabase credentials verification fails (e.g. database network error) but local default credentials match, the admin is logged in with a clear warning toast: `"Supabase connection failed. Logged in via Local Offline Fallback (Rider provisioning disabled)."`.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `store/adminAuthStore.ts` | Refactored login function to await Supabase Auth checks and surface warnings |
+
+---
+
+## [v2.3.9] — Agent List Empty-State Synchronization & Cleanup Tool — August 14, 2026
+
+### 🧹 Agent Caching & Initial Hydration
+- **Empty State Store Override**: Corrected an issue in `app/admin/agents/page.tsx` where an empty list returned from the database did not overwrite the local Zustand store state (due to length checks). Stale localStorage agent profiles now clear immediately if the database has been truncated or has no riders.
+- **Admin Clean-up Script**: Built `supabase/clear-agents.js`, a command-line script that parses local configuration secrets, connects to Supabase via admin client credentials, deletes all delivery riders in a loop from `auth.users`, and truncates the database `public.agents` table.
+- **Admin Seeding Script**: Built `supabase/create-admin.js`, a utility to create or update the default admin account with auto-confirmed status and correct role metadata, bypassing email confirmation locks.
+
+### Files Modified / Added
+| File | Change |
+|------|--------|
+| `app/admin/agents/page.tsx` | Allowed empty lists to synchronize and overwrite local Zustand caching |
+| `supabase/clear-agents.js` | [NEW] Utility script to purge agent profiles from DB and Auth |
+| `supabase/create-admin.js` | [NEW] Utility script to provision the default admin account |
+
+---
+
+## [v2.3.8] — Agent Edit Modal & Self-Healing UUID Migration — August 14, 2026
+
+### 🛠️ Agent Edit Modal Fixes
+- **Legacy Dummy ID Self-Healing**: Extended the `/api/admin/agents/provision` POST update handler to check if the incoming `id` is a legacy dummy ID (pre-v2.3.6 starting with `AGT-` or shorter than 36 chars). If a dummy ID is detected, it automatically queries the Auth listing to recover the agent's correct UUID (or provisions a new user on the fly), deletes the legacy key row from the database, and upserts a clean UUID-linked database record.
+- **Client Store Synchronization**: Refactored the `updateAgent` action inside `agentsStore.ts` to parse the returned database `agent` payload from the API response. If the database ID changed during the dummy-to-UUID migration, the store filters out the old legacy key row and appends the clean UUID-linked agent in state, keeping client cache and the cloud database completely in sync.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `app/api/admin/agents/provision/route.ts` | Added self-healing legacy ID deletion and recovery checks on update |
+| `store/agentsStore.ts` | Synchronized the client state to parse and update mutated database IDs |
+
+---
+
+## [v2.3.7] — Mobile-Responsive Admin Sidebar Layout Drawer — August 14, 2026
+
+### 📱 Dashboard Mobile Responsiveness
+- **Desktop Persistent Panel**: Configured the standard left sidebar to remain persistently docked on larger screens (`w-[260px] hidden lg:flex`).
+- **Mobile Toggle Overlay**: Engineered a responsive drawer slide-over panel on smaller screens (`lg:hidden`). When the mobile menu is opened, a backdrop covers the view, and the sidebar panel glides in from the left (`animate-slide-right` transition).
+- **Decoupled Hamburger Trigger**: Added a Menu hamburger button on the left of `AdminTopbar.tsx` (visible only on mobile viewports). Clicking it dispatches a lightweight custom window event `'toggle-admin-sidebar'` which toggles the drawer state instantly without Zustand boilerplate.
+- **Auto-Close Path Listener**: Wired the pathname hook inside the sidebar layout to automatically close the mobile menu on item selection, ensuring fluid page transitions on small viewport screens.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `components/admin/layout/AdminSidebar.tsx` | Added desktop-persistent and mobile-drawer sidebar rendering logic |
+| `components/admin/layout/AdminTopbar.tsx` | Added Menu icon and hamburger click trigger dispatching custom events |
+
+---
+
+## [v2.3.6] — Agent Credentials Stability & Auth User Recovery — August 14, 2026
+
+### 🔑 Agent Auth Mismatch Recovery
+- **UUID Recovery from Existing Users**: Fixed a critical bug in `/api/admin/agents/provision` where, if the user was already registered in Supabase Auth (e.g. from previous manual seeds or deleted rows), the endpoint returned a success state but generated a dummy ID (like `AGT-XXXX`) for the database `agents` table. This mismatch prevented agents from logging in because the Auth UUID did not align with the database primary key. The API now lists existing users, locates the correct UUID, resets the password/meta claims directly, and matches the database primary key perfectly.
+- **Visual Error Surface**: Upgraded `addAgent` and `updateAgent` inside `agentsStore.ts` to capture API response errors and trigger visual `react-hot-toast` error alerts, replacing silent console failures.
+- **Credentials Merged Payload**: Refactored the `updateAgent` parameter mappings to fetch and merge existing values before posting to the API route, preventing parameters like `whatsapp` or `name` from nulling out when only resetting passwords.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `app/api/admin/agents/provision/route.ts` | Added user listing check to recover UUID and sync password on "already registered" cases |
+| `store/agentsStore.ts` | Upgraded credentials payload merging and surfaced API error toasts |
+| `app/admin/agents/page.tsx` | Removed redundant client-side optimistic success toasts |
+
+---
+
+## [v2.3.5] — Undocumented Route Deletion, Bill Compliance Columns & Hero Text Cleanup — August 14, 2026
+
+### 🛡️ Deletion of `/api/admin/clean-orders` (Security Clean)
+- **Deleted Route**: Completely removed the undocumented testing endpoint `/api/admin/clean-orders/route.ts` from the filesystem. This route was flagged as a critical security risk because a fallback parameter bypassed authentication checks and could trigger unauthenticated deletions of all orders and bills.
+
+### 🧾 Invoice Compliance Fields on `bills` Table
+- **Expanded Bills Schema**: Added `items` (JSONB), `payment_method` (TEXT), `order_type` (TEXT), and `coupon_code` (TEXT) columns to the `bills` table.
+- **Trigger Alignment**: Updated the `auto_create_bill` PostgreSQL database trigger function to populate these new columns directly from order parameters on placement.
+- **RPC Update**: Updated the `get_all_bills()` RPC function returns to fetch and query these new fields.
+- **Independent Printing Hydration**: Refactored the `mapDbBillToBill` frontend mapper inside `billsStore.ts` to fallback to these database columns when an order is no longer present in the local 30-day client cache. Printed invoices now render itemized receipts even for legacy database histories.
+
+### 🌐 Landing Page Hero Card
+- **Stale Text Removed**: Cleaned up the landing page badge inside `HeroBrandCircle.tsx` from "Menu Ready — Launch in 7 Days" to "Now Live — Order via WhatsApp" to reflect the actual live deployment state of the cloud kitchen website.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `app/api/admin/clean-orders/route.ts` | **[DELETE]** Removed the undocumented clear-orders testing endpoint |
+| `supabase/schema.sql` | Modified `public.bills` schema, `auto_create_bill` trigger, and `get_all_bills` RPC |
+| `store/billsStore.ts` | Configured fallback parameters for independent invoice print rendering |
+| `components/hero/HeroBrandCircle.tsx` | Updated hero launch card text |
+
+---
+
+## [v2.3.4] — KDS Security Lock, COD Auto-Pay Scoping & Documentation Reconciliation — August 14, 2026
+
+### 🛡️ KDS Wall-Mount Screen Lock
+- **Fullscreen KDS Overlay**: Implemented a "Lock Screen" feature on the Kitchen View page that overlays the entire viewport with a fullscreen layout, completely hiding the admin sidebar and header navigation menus to prevent unauthorized page switching on unattended tablet monitors.
+- **Session-PIN Protection**: Secures the locked overlay with a customizable temporary session PIN. Unlocking requires entering this PIN, keeping general kitchen staff out of sensitive financial records and settings.
+
+### 💰 Scoped COD Payment Logic (Intentional Operational Design)
+- **Rider Cash Scoping**: Restored the `orderType === 'delivery'` guard to auto-payment status flips. Delivery agents are trusted to auto-trigger paid status upon doorstep cash delivery, while Dine-in/Takeaway orders require manual counter-payment verification by the cashier (a deliberate operational choice to prevent dashboard inflation before physical cash changes hands).
+
+### 📝 Documentation & Verification Reconciliation
+- **Stale SQL Audited**: Cleaned up the outdated function signatures in `docs/SUPABASE_INTEGRATION.md` to match the hardened database schemas.
+- **Access Guard Checked**: Confirmed that `/admin/kitchen` is strictly gated by the Layout Auth Guard and redirects to the login screen immediately upon admin logout.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `app/admin/kitchen/page.tsx` | Added session PIN screen lock overlay for wall-mounted tablet monitors |
+| `store/orderStore.ts` | Reverted cash auto-pay trigger to delivery type orders only |
+| `docs/SUPABASE_INTEGRATION.md` | Cleaned up stale sql grants and signatures in docs |
+
+---
+
+## [v2.3.2] — Kitchen Display System (KDS) & Wall-Mount Mode — August 14, 2026
+
+### 🍳 Kitchen Display System (KDS) Monitor
+- **Active Cooking Monitor (`/admin/kitchen`)**: Created a dedicated, real-time Kitchen View page that queries cooking-assigned orders (`status = 'accepted'`) in chronological order.
+- **Wall-Mount mode**: Implemented a text-scaling accessibility toggle that increases item sizes by 40% for kitchen-mounted tablet screens (viewable from 5+ feet away).
+- **Elapsed Cooking Timers**: Added dynamic timer badges that track elapsed cooking delays and color-code warning status (Green, Amber, Red-Pulse if >20m delay).
+- **Chefs Bell Notifications**: Integrated a soft kitchen bell ding using the Web Audio API to alert cooks instantly when new accepted orders arrive.
+- **Rider/Teammate Privacy Separation**: Ensured zero teammate directory leaks in the new views, reading order item lists and cook instructions directly from `order.notes`.
+
+### 🧭 Sidebar Navigation Integration
+- **Sidebar Integration**: Integrated a new `Kitchen View` menu link inside `AdminSidebar.tsx` utilizing a `ChefHat` icon.
+- **Live Cooking Badges**: Added a dynamic red notification badge displaying the count of orders currently requiring preparation.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `app/admin/kitchen/page.tsx` | New Kitchen Display Monitor page with audio bells and big text mode |
+| `components/admin/layout/AdminSidebar.tsx` | Added Kitchen View option with ChefHat icon and live badge count |
+
+---
+
+## [v2.3.1] — Agent Credentials Hardening & Access Control — August 14, 2026
+
+### 🔒 Plaintext Password Elimination
+- **Dropped password column in public database**: Completely removed the insecure plaintext `password` column from `public.agents` database table and removed all related payload mappings from `supabaseSync.ts`.
+- **Zustand store profile cleanup**: Refactored the `Agent` type in `agentsStore.ts` and `agentAuthStore.ts` to strictly keep credentials handling out of client state storage.
+- **Server-driven resets & updates**: Extended the `/api/admin/agents/provision` server-side API to support updates (POST payload with `id`), allowing secure password resets and metadata updates in Supabase Auth via Admin service role token verification.
+
+### 🛡️ Restricted Execution & teammate privacy
+- **Admin-Only Teammate list**: Restricted the `get_all_agents()` RPC strictly to `role: 'admin'`. Removed the redundant teammate loading calls from the Agent Portal (`AgentOrdersPage`) mount hooks to protect rider phone numbers and details from teammate exposure.
+- **Explicit Role Claims checks**: Hardened PL/pgSQL function signatures for all 7 `SECURITY DEFINER` helper methods to explicitly raise exceptions (`IF role <> 'admin' THEN RAISE EXCEPTION`) when invoked by non-admin callers.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `supabase/schema.sql` | Removed password column from table and RPCs, restricted get_all_agents to admin |
+| `lib/supabaseSync.ts` | Removed password fields mapping in agentToRow and rowToAgent |
+| `store/agentsStore.ts` | Async addAgent/updateAgent actions, stripped password keys from state |
+| `app/api/admin/agents/provision/route.ts` | Added update support (POST with id), removed password from table upsert payload |
+| `app/admin/agents/page.tsx` | Updated edit form to support optional password resets (placeholders) |
+| `app/agent/orders/page.tsx` | Removed teammate loading to prevent leaks |
+
+---
+
+## [v2.3.0] — Settings, Coupons & Pricing Live-Sync & Integrity — August 14, 2026
+
+### 🚨 Critical Database & Sync Integrity Fixes
+- **SQL Schema and Key Resolution (`public.settings`)**: Solved the `Postgres SQL Error: 42703: column key does not exist` that occurred during settings updates. Dropped the old table and re-created it with `key` as a `TEXT PRIMARY KEY`, `value` as `JSONB`, and RLS policies correctly scoped. Re-seeded default configs.
+- **Universal Realtime Sync (`subscribeToSettingRealtime`)**: Swapped the WebSocket listener from checking only `UPDATE` events to `event: '*'` (INSERT, UPDATE, DELETE). This ensures fresh settings are broadcast instantly even on new DB setups.
+- **Dynamic Realtime Publication**: Re-registered `public.settings` to `supabase_realtime` to enable instant WebSocket updates.
+
+### 💰 Tax & Coupon Pricing Parity
+- **Settings-Driven GST Calculations (`CartDrawer.tsx` / `CartSummary.tsx` / API)**: Removed hardcoded 5% checkout tax. Implemented full configuration branching:
+  - `exclusive`: 5% calculated and added on top of subtotal.
+  - `inclusive`: 5% tax is already included in prices (displays italic "Already in menu prices").
+  - `none`: Tax row is hidden, ₹0 charge.
+- **WhatsApp Checkout Realtime Contacts**: Fixed legacy contact phone `919876543210` in `CartSummary.tsx` to read dynamically from `settings.whatsappNumber`.
+- **Free-Delivery Coupons Parity**: Fixed cart UI display mismatch for `free-delivery` coupons (e.g. `FREEBY`). Delivery charges are now visually waived to `₹0 (FREEBY applied)` in the checkout drawer, matching backend API pricing recomputation.
+- **Robust API Promotions Fallbacks**: Updated fallback dictionary shape in `/api/orders/create` to match `promotionsStore` (`{ rewardTiers, coupons, offers }` instead of legacy keys) to prevent coupon validation crashes on cold starts.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `supabase/schema.sql` | Fixed `settings` table schema & seeded initial data |
+| `lib/supabaseSync.ts` | Upgraded settings listener to handle `*` events |
+| `components/cart/CartDrawer.tsx` | Fixed GST double-taxation & Coupon Free-Delivery UI |
+| `components/cart/CartSummary.tsx` | Integrated dynamic WhatsApp number and GST logic |
+| `app/api/orders/create/route.ts` | Aligned GST mode verification & Promotions fallback schema |
+
+---
+
 ## [v2.2.3] — Menu Search Bar — August 14, 2026
 
 ### ✨ New Feature

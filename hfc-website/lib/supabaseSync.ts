@@ -100,10 +100,9 @@ export async function syncOrderToSupabase(order: OrderRecord, maxRetries = 3) {
         if (!rpcError) {
           success = true
         } else {
-          // Fallback: direct upsert (works if admin has valid JWT)
           const { error: directError } = await supabase
             .from('orders')
-            .upsert(row, { onConflict: 'id', ignoreDuplicates: false })
+            .insert(row)
 
           if (!directError) {
             success = true
@@ -294,16 +293,12 @@ export function subscribeToAllOrdersRealtime(
   }
 }
 
-/**
- * Convert Agent to Supabase row format
- */
 export function agentToRow(agent: any) {
   return {
     id: agent.id,
     name: agent.name,
     whatsapp: agent.whatsapp,
     username: agent.username,
-    password: agent.password,
     is_active: agent.isActive,
     vehicle_type: agent.vehicleType || null,
     coverage_area: agent.coverageArea || null,
@@ -312,16 +307,12 @@ export function agentToRow(agent: any) {
   }
 }
 
-/**
- * Convert Supabase row to Agent format
- */
 export function rowToAgent(row: any) {
   return {
     id: row.id,
     name: row.name,
     whatsapp: row.whatsapp,
     username: row.username,
-    password: row.password || '123',
     isActive: row.is_active,
     vehicleType: row.vehicle_type || null,
     coverageArea: row.coverage_area || null,
@@ -578,6 +569,7 @@ export async function fetchSettingFromSupabase(key: string): Promise<any | null>
 
 /**
  * Subscribe to realtime changes for a specific settings key
+ * Listens to ALL events ('*') = both INSERT + UPDATE so first-save ever is picked up.
  */
 export function subscribeToSettingRealtime(
   key: string,
@@ -587,10 +579,37 @@ export function subscribeToSettingRealtime(
     .channel(`setting-${key}-realtime`)
     .on(
       'postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'settings', filter: `key=eq.${key}` },
+      { event: '*', schema: 'public', table: 'settings', filter: `key=eq.${key}` },
       (payload) => {
         if (payload.new && (payload.new as any).value) {
           onChanged((payload.new as any).value)
+        }
+      }
+    )
+    .subscribe()
+
+  return () => {
+    supabase.removeChannel(channel)
+  }
+}
+
+/**
+ * Subscribe to realtime agent updates (for Admin Agents page and Order assignment dropdowns)
+ */
+export function subscribeToAgentsRealtime(
+  onChanged: (item: any) => void,
+  onDeleted: (id: string) => void
+): () => void {
+  const channel = supabase
+    .channel('agents-realtime-channel')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'agents' },
+      (payload) => {
+        if (payload.eventType === 'DELETE') {
+          onDeleted((payload.old as any).id)
+        } else {
+          onChanged(rowToAgent(payload.new))
         }
       }
     )

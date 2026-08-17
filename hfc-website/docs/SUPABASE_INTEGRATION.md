@@ -29,6 +29,15 @@
    - **Delivery Agent Portal**: Subscribes to all order changes via `subscribeToAllOrdersRealtime()`, updating rider screens live on any mobile device.
    - **Customer Menu**: Subscribes to product changes via `subscribeToProductsRealtime()`.
    - **Branding & Checkout Settings**: Subscribes to settings updates via `subscribeToSettingRealtime('site_settings', cb)`.
+   - **Coupons & Promotions**: Subscribes to promotions updates via `subscribeToSettingRealtime('promotions', cb)`.
+
+### Critical Realtime Listener Fix (Session Aug-14-2026)
+⚠️ **Settings & Coupons First Save Was Not Broadcasting**:
+`lib/supabaseSync.ts subscribeToSettingRealtime()` previously used `event: 'UPDATE'`. On a fresh database, the very first save ever performs an `INSERT` (row didn't exist yet). The `postgres_changes` listener was only subscribed to UPDATE events, so first-time saves (including first-ever coupon and settings edit) did NOT propagate to customer browsers or other admin tabs.
+
+**Fix:** Event filter changed to `event: '*'` = listens to INSERT + UPDATE + DELETE on the row-filtered `key=eq.<key>` channel.
+
+**Server-side Publication Fix:** Added idempotent block that verifies ALL 3 tables (`orders`, `products`, `settings`) are actually in the `supabase_realtime` publication. Previously `settings` was missing on fresh seeds, causing websocket listeners to never fire (even with correct client filters).
 
 ---
 
@@ -144,9 +153,62 @@ To eliminate TOCTOU (Time-of-Check to Time-of-Use) race conditions and prevent s
 ### 5. `settings` Table
 | Column | Type | Description |
 |--------|------|-------------|
-| `key` | TEXT PK | Primary Key (e.g. `site_settings`, `promotions`) |
-| `value` | JSONB | Dynamic JSONB payload containing fields |
+| `key` | TEXT PK | Primary Key — see row keys below |
+| `value` | JSONB | Dynamic JSONB payload — shape depends on key. **No stale `bannerText`/`popupImage` fields used anymore**. |
 | `updated_at` | TIMESTAMPTZ | Last sync timestamp |
+
+#### Row Keys (the only 3 you'll find in the table):
+
+| `key` value | What It Stores | Shape |
+|-------------|----------------|-------|
+| `site_settings` | All business config: GST, delivery fees, branding, WhatsApp #, UPI, delivery areas, subscription plans | `Settings` TS interface (see SETTINGS.md) |
+| `promotions` | Coupons, reward tiers, offers (unified) | `{ rewardTiers: [], coupons: [], offers: [] }` |
+| `site_settings_private` | **Admin-only row.** Stores sensitive Meta Cloud API credentials. Never readable by anon. | `{ cloudApiToken, cloudApiPhoneId }` |
+
+⚠️ **Schema Bug Fixed (Session Aug-14-2026 — SQL 42703):**
+The old `settings` table had no `key` column PRIMARY KEY defined (which caused Postgres `SQL Error 42703 column settings.key does not exist`). The table is now recreated with:
+```sql
+CREATE TABLE public.settings (
+  key TEXT PRIMARY KEY,
+  value JSONB,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+Drop + recreate was required because the pre-existing table had no PK constraint. All seeded rows use the correct shapes above.
+
+### 5a. `settings` Table RLS Policies (Prevent Public Write, Allow Public Read)
+
+| Policy | For | Postgres Clause |
+|--------|-----|------------------|
+| Public read settings | `SELECT` | `USING (true)` |
+| Admin write settings | `ALL` (INSERT/UPDATE/DELETE) | `USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin')` |
+
+Any admin mutation (save settings, save coupon, add delivery area) **bypasses the RLS check entirely** by calling a SECURITY DEFINER RPC: `sync_setting(p_key TEXT, p_value JSONB)` — so even if admin's browser auth token is missing the custom role claim (due to browser-only auth bypass), mutations still land safely.
+
+Any admin mutation (save settings, save coupon, add delivery area) calls a `SECURITY DEFINER` RPC: `sync_setting(p_key TEXT, p_value JSONB)`. This function is strictly restricted to authenticated admins and revokes public execution rights to prevent unauthorized settings overrides:
+
+```sql
+CREATE OR REPLACE FUNCTION public.sync_setting(p_key TEXT, p_value JSONB)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF COALESCE((auth.jwt() -> 'user_metadata' ->> 'role'), '') <> 'admin' THEN
+    RAISE EXCEPTION 'Access Denied: Admin privileges required';
+  END IF;
+
+  INSERT INTO public.settings (key, value, updated_at)
+  VALUES (p_key, p_value, NOW())
+  ON CONFLICT (key) DO UPDATE SET
+    value = EXCLUDED.value,
+    updated_at = EXCLUDED.updated_at;
+END;
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.sync_setting(TEXT, JSONB) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.sync_setting(TEXT, JSONB) TO authenticated;
+```
 
 ---
 
@@ -155,10 +217,28 @@ To eliminate TOCTOU (Time-of-Check to Time-of-Use) race conditions and prevent s
 Realtime is enabled on `orders`, `products`, and `settings` tables via Postgres publication:
 
 ```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.settings;
+-- Idempotent version (safe to rerun):
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='orders') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='products') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname='supabase_realtime' AND schemaname='public' AND tablename='settings') THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.settings;
+    END IF;
+END $$;
 ```
+
+**Verify realtime tables are registered:**
+```sql
+SELECT tablename FROM pg_publication_tables
+WHERE pubname = 'supabase_realtime'
+  AND tablename IN ('orders','products','settings');
+```
+Should return exactly **3 rows**. If missing, rerun the idempotent DO block.
 
 ---
 

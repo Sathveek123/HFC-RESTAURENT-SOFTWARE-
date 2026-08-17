@@ -204,23 +204,58 @@ Tables subscribed to `supabase_realtime` publication:
 |-------|-----------------|-------------|
 | `orders` | `INSERT`, `UPDATE`, `DELETE` | Admin panel, Delivery portal, Customer tracker |
 | `products` | `INSERT`, `UPDATE`, `DELETE` | Customer menu page |
-| `settings` | `UPDATE` | Customer checkout (delivery fee, UPI), Admin settings page |
+| `settings` | `INSERT`, `UPDATE` | Customer checkout (delivery fee, UPI, GST), Admin settings page, **Coupons page** (promotions row) |
+
+⚠️ **IMPORTANT BUG FIXED (session Aug-14-2026):** Both the database publication AND the client-side JS listener were accidentally handling UPDATE-only:
+- **Publication side:** The idempotent SQL now adds all 3 tables to the realtime publication (settings was missing on fresh installs).
+- **Client side:** `subscribeToSettingRealtime()` previously used `event: 'UPDATE'` only. On a fresh Supabase instance, the first time you save settings, that's an `INSERT` (row didn't exist yet). That first insert was never broadcast — so customers and other admin tabs wouldn't see anything until you refreshed the page. Now listener uses `event: '*'` = listens to **all events** (INSERT + UPDATE + DELETE), so both first-save ever AND subsequent edits propagate in < 1s.
 
 ### How Realtime is enabled (SQL):
 ```sql
--- Run for each table
+-- Idempotent enable for ALL THREE tables. Safe to rerun.
 DO $$
 BEGIN
     IF NOT EXISTS (
         SELECT 1 FROM pg_publication_tables 
         WHERE pubname = 'supabase_realtime' 
           AND schemaname = 'public' 
-          AND tablename = 'orders' -- change to 'products' or 'settings' as needed
+          AND tablename = 'orders'
     ) THEN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.orders;
     END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+          AND schemaname = 'public' 
+          AND tablename = 'products'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.products;
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+          AND schemaname = 'public' 
+          AND tablename = 'settings'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.settings;
+    END IF;
 END $$;
 ```
+
+### Verify in 2 seconds — run this:
+```sql
+SELECT tablename, string_agg(event, ', ') AS events
+FROM pg_publication_tables
+LEFT JOIN pg_publication_rel ON (
+  pubrel.pubid = pg_publication.oid
+  AND pg_publication.pubname = 'supabase_realtime'
+  AND ...
+)
+WHERE pubname = 'supabase_realtime' AND tablename IN ('orders','products','settings')
+GROUP BY tablename;
+```
+
+You should see 3 rows: `orders`, `products`, `settings`. If any row is missing, run the DO block above.
 
 ---
 
@@ -284,6 +319,21 @@ END $$;
 - ✅ GST % and mode
 - ✅ Accept Cash / Accept Online toggles
 - ✅ Delivery area list (customer dropdown)
+
+---
+
+### `agentsStore.ts`
+| Action | Supabase Call | Realtime |
+|--------|--------------|---------|
+| `addAgent()` | `/api/admin/agents/provision` server-side API (with JWT) | Yes — propagates to layout |
+| `updateAgent()` | `/api/admin/agents/provision` server-side update + `sync_agent(row)` RPC | Yes |
+| `deleteAgent()` | `delete_agent_by_id(id)` RPC | Yes |
+| `toggleAgentActive()` | `sync_agent(row)` RPC | Yes |
+| `incrementDeliveries()` | `sync_agent(row)` RPC | Yes |
+| `fetchAgentsFromSupabase()` | Direct SELECT (admin only) | On mount |
+| `subscribeToAgentsRealtime()` | WebSocket channel | Admin pages & assignment dropdowns |
+
+**Credentials Security:** Passwords and hashes are completely omitted from the database sync payload. Credentials exist strictly inside Supabase Auth container.
 
 ---
 
@@ -458,9 +508,26 @@ GRANT EXECUTE ON FUNCTION public.sync_setting(TEXT, JSONB) TO anon, authenticate
 - **Root Cause:** `settingsStore.ts` only used `localStorage` — no Supabase sync existed. Changes made on one device didn't appear on another.
 - **Fix:** Every `settingsStore` mutation now calls `syncSettingToSupabase('site_settings', ...)`. On mount, `fetchAndSyncSettings()` loads from database. Website subscribes to realtime so delivery fee, UPI ID, GST changes update live.
 
-### 11. ✅ Egress Protection
-- **Root Cause:** `fetchOrdersFromSupabase()` fetched ALL orders without any date limit. As order volume grew, each admin page load would download increasingly large payloads, eventually hitting the 5GB/month free limit.
-- **Fix:** Added 30-day rolling window filter and 500-row hard cap on all bulk data fetches (orders, bills).
+### 12. ✅ Settings Realtime Listener Only Received Updates — First Save Not Synced (Broken)
+- **Root Cause:** `subscribeToSettingRealtime()` used `event: 'UPDATE'`. But on a fresh database, the first save ever performs an `INSERT` (row didn't exist). The client-side JS listener was never subscribed to INSERT events, so the first admin save + first coupon save did NOT propagate live to other tabs or customers until the page was refreshed.
+- **Customer-facing impact:** Customers trying to use a coupon saved just minutes before would get "Invalid coupon code" until they refreshed the page.
+- **Fix:** Changed listener from `event: 'UPDATE'` → `event: '*'` in `lib/supabaseSync.ts`. Now it subscribes to INSERT + UPDATE + DELETE on the specific settings row filter `key=eq.<row>`, so both first-save ever AND subsequent edits broadcast in < 1 second.
+
+### 13. ✅ CartDrawer Always Charged GST Regardless of gstMode Selection
+- **Root Cause:** `CartDrawer.tsx` hardcoded `gst = subtotal * (gstPercent || 0.05)` — ignoring the admin setting `gstMode` value entirely. If admin selected "GST Inclusive" (meant: already in menu prices), customers were still being double-taxed.
+- **Fix:** Added full mode branching:
+  - `exclusive` → add GST on top (restaurant standard, same as previous default for users who haven't touched mode yet)
+  - `inclusive` → GST line shows "Already in menu prices" italic; NO added charge at checkout
+  - `none` → GST line completely hidden; 0 added to total
+- Also fixed same hardcoding bug in `CartSummary.tsx` (standalone WhatsApp cart component) which had both hardcoded 5% GST AND hardcoded phone number `919876543210` instead of the saved settings WhatsApp #.
+
+### 14. ✅ FREEBY Coupon UI Still Showed Delivery Charge (False Pricing Mismatch)
+- **Root Cause:** CartDrawer.tsx only used `subtotal >= freeDeliveryAbove` waive rule. But `promotionsStore` supports a third coupon type `discountType === 'free-delivery'` which also waives delivery charge (regardless of subtotal vs threshold). The server at `/api/orders/create` correctly waived delivery charge in this case — but the UI kept displaying the old delivery charge as an additional line item, causing customers to see one price and be charged another (lower) one on the final order record.
+- **Fix:** Added `hasFreeDeliveryCoupon` flag to CartDrawer that also triggers waive. Delivery charge line now shows which rule waived it: `(FREEBY coupon applied)` or `(orders above ₹500)`.
+
+### 15. ✅ Orders API `DEFAULT_PROMOTIONS` Fallback Was Wrong Shape
+- **Root Cause:** `/api/orders/create` `DEFAULT_PROMOTIONS` fallback used `{ coupons:[], bannerText, popupImage }` from legacy pre-unification schema. Since the actual promotions row now stores `{ rewardTiers, coupons, offers }`, any DB-miss scenario (cold-started Vercel instance with expired supabase cache) would have promotions set to the wrong shape and coupon lookups would silently fail.
+- **Fix:** Updated fallback to exact `{ rewardTiers:[], coupons:[], offers:[] }` matching the `promotionsStore.ts` interface.
 
 ---
 
@@ -494,10 +561,15 @@ npx vercel deploy --prod --yes
 | `store/orderStore.ts` | Idempotency guard in `addOrder()`, 30-day fetch window |
 | `store/billsStore.ts` | Added `fetchBills()` from Supabase RPC |
 | `lib/supabaseSync.ts` | Added: `syncProductToSupabase`, `deleteProductFromSupabase`, `fetchProductsFromSupabase`, `subscribeToProductsRealtime`, `syncSettingToSupabase`, `fetchSettingFromSupabase`, `subscribeToSettingRealtime` |
+| `lib/supabaseSync.ts subscribeToSettingRealtime()` | ✅ Changed `event: 'UPDATE'` → `event: '*'` so first INSERT (first save ever) is also broadcast (bug #12) |
 | `components/menu/MenuSection.tsx` | Added Supabase product fetch + realtime subscription on mount |
 | `components/cart/CartDrawer.tsx` | Replaced `useCouponsStore` with `usePromotionsStore` for live coupon validation |
+| `components/cart/CartDrawer.tsx` | ✅ Added GST mode support (bug #13) + ✅ hasFreeDeliveryCoupon waive rule (bug #14) + detailed price breakdown with Subtotal/GST/Delivery/Discount lines |
+| `components/cart/CartSummary.tsx` | ✅ Fixed hardcoded 5% GST + hardcoded phone `919876543210` — now reads live from settings (bug #13) |
 | `app/page.tsx` | Added promotions + settings fetch and realtime subscriptions |
 | `app/admin/coupons/page.tsx` | Added `fetchAndSyncPromotions` + realtime subscription on mount |
 | `app/admin/settings/page.tsx` | Added `fetchAndSyncSettings` + realtime subscription on mount |
 | `app/admin/bills/page.tsx` | Added `fetchBills()` on mount |
+| `app/api/orders/create/route.ts` | ✅ Fixed `DEFAULT_PROMOTIONS` from stale `{ coupons, bannerText, popupImage }` → `{ rewardTiers, coupons, offers }` (bug #15) + gstMode handling |
 | `supabase/schema.sql` | Added: `sync_product` RPC, `sync_setting` RPC, `auto_create_bill` trigger, `sync_bill_payment_status` trigger, products RLS policies, settings realtime publication |
+| `supabase/schema.sql` | Settings `site_settings` + `promotions` seed now use correct shapes (rewardTiers/coupons/offers + HFC50 FREEBY seed coupons) |

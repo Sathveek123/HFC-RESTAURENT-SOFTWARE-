@@ -94,19 +94,27 @@ export const useAdminAuthStore = create<AdminAuthStore>((set) => ({
   isAuthenticated: false,
 
   login: async (username: string, pin: string) => {
-    // ─── 1. SYNC LOCAL CHECK FIRST — NO ASYNC, NO NETWORK, GUARANTEED TO RUN ──
-    if (isDefaultCredentials(username, pin)) {
-      writeLocalAuth(true)
-      set({ isAuthenticated: true })
-      authenticateAdminSupabase(username, pin).catch(() => {})
-      return true
-    }
-
-    // ─── 2. ONLY NOW TRY SUPABASE FOR NON-DEFAULT ACCOUNTS ───────────────────
+    // ─── 1. AWAIT SUPABASE AUTHENTICATION FIRST ────────────────────────────────
     const supabaseOk = await authenticateAdminSupabase(username, pin)
     if (supabaseOk) {
       writeLocalAuth(true)
       set({ isAuthenticated: true })
+      return true
+    }
+
+    // ─── 2. FALLBACK TO LOCAL AUTH ONLY IF DEFAULT CREDENTIALS MATCH ────────────
+    if (isDefaultCredentials(username, pin)) {
+      writeLocalAuth(true)
+      set({ isAuthenticated: true })
+      
+      // Notify the administrator that cloud features are offline/limited
+      try {
+        const toast = require('react-hot-toast').toast
+        toast.error('Supabase connection failed. Logged in via Local Offline Fallback (Rider provisioning disabled).', {
+          duration: 6000
+        })
+      } catch (_) {}
+      
       return true
     }
 
@@ -126,8 +134,7 @@ export const useAdminAuthStore = create<AdminAuthStore>((set) => ({
       set({ isAuthenticated: true })
     }
 
-    // Then verify with Supabase in the background — but DON'T unset local auth
-    // even if Supabase session is missing. Local fallback = king.
+    // Verify with Supabase in the background — auto-recover session if missing!
     try {
       const session = await checkSupabaseAuthSession()
       const isSupabaseAdmin = session?.user?.user_metadata?.role === 'admin'
@@ -135,8 +142,14 @@ export const useAdminAuthStore = create<AdminAuthStore>((set) => ({
         writeLocalAuth(true)
         set({ isAuthenticated: true })
       } else if (localOk) {
-        // Keep local auth even if Supabase session is gone
-        set({ isAuthenticated: true })
+        // Auto-recover Supabase session using default credentials in background
+        console.log('Supabase session missing. Attempting auto-recovery...')
+        const ok = await authenticateAdminSupabase(DEFAULT_ADMIN_ALT, DEFAULT_ADMIN_PASS)
+        if (ok) {
+          console.log('Supabase session recovered successfully ✓')
+        } else {
+          set({ isAuthenticated: true })
+        }
       }
     } catch (_) {
       // Network issues — keep local auth if set

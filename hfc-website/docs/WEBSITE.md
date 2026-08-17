@@ -67,30 +67,62 @@ Every config detail (delivery fees, UPI ID, coupons, menu products) is loaded fr
 - **Real-Time Sync**: Subscribes to postgres changes on `products` table via `subscribeToProductsRealtime()`. When the admin edits prices, updates names, or toggles availability in the admin panel, the client menu card updates instantly without page reload.
 - **Dynamic Categories**: Category filter tabs are automatically populated based on active product categories.
 - **Availability Guard**: Items toggled "Unavailable" in admin disappear instantly.
+- **Menu Search Bar (New in v2.2.3)**:
+  - **Debounced Input Component**: Added `MenuSearchBar.tsx` above the category filter tabs. It debounces keystrokes by 200ms to filter items as you type.
+  - **Tri-field Match Logic**: Filters products in real-time matching `name`, `description`, or `categoryId` (case-insensitive).
+  - **Flat Grid Result View**: When search is active, category tabs fade to `opacity-30` and are disabled (`pointer-events-none`). The grid replaces the category layout with a single flat list of matches.
+  - **Count Chip & Clear CTA**: Shows a result count (e.g. `5 results for "Paneer"`) below the search bar, along with a clear (✕) button that instantly resets the input and restores the last active category tab.
+  - **Zero Results Empty State**: If no dishes match, displays a custom empty state prompt reminding the customer to try other search terms like "Biryani" or "Starter".
 
 ---
 
 ## 🛒 Cart Drawer & Checkout
 
-**Component:** `components/cart/CartDrawer.tsx`
+**Component:** `components/cart/CartDrawer.tsx`  
+**Secondary Component (WhatsApp direct cart):** `components/cart/CartSummary.tsx`
 
 ### 3-Step Checkout Flow
 
 #### Step 1 — Cart Review
 - Item list with quantity +/- controls.
-- Coupon code input field connected to `promotionsStore`.
-- Subtotal, GST, and Total calculations. Taxes CGST + SGST split evenly.
+- Coupon code input field connected to `promotionsStore`. Coupons are loaded from Supabase and broadcast live — a coupon saved in Admin panel validates here instantly without refresh.
+- **Detailed price breakdown panel (Session Aug-14-2026 rewrite):** Displays the following 4 lines in the highlighed total bar so customers see exactly why the total is what it is:
+  1. **Subtotal** — sum of all items at menu price
+  2. **GST** — depends on `settings.gstMode` (see below)
+  3. **Delivery charge** — if `orderType === 'delivery'`; shows FREE (green) if waived by coupon or threshold, including reason text
+  4. **Discount (coupon code)** — negative line in green showing subtotal reduction from applied coupon
+  5. **Final Total**
+- All 4 lines update live via `useSettingsStore` + `usePromotionsStore` → if admin changes delivery fee or GST mode from another tab/browser, totals change instantly here.
+
+#### GST Mode Support (New)
+
+The **GST line** changes behavior entirely based on what's saved in Admin → Settings:
+
+| gstMode | What the customer sees at Checkout |
+|---------|-----------------------------------|
+| `exclusive` (default) | Bold: `GST (5%)   ₹XX.XX` — added ON TOP of subtotal (restaurant standard) |
+| `inclusive` | Italic muted: `GST (5%)   Already in menu prices` — NO extra charge |
+| `none` | GST line completely hidden — 0 added to total |
+
+⚠️ **Critical bug fixed (session Aug-14-2026):** Previously CartDrawer + CartSummary hardcoded 5% GST regardless of gstMode. Customers were double-taxed if admin selected "GST Inclusive" (tax baked into menu, then again added at checkout). Now branches correctly per mode above. Same bug existed in `CartSummary.tsx` plus phone number `919876543210` was hardcoded — now both read live from settings.
+
+#### Delivery Fee Waive Rules (Live)
+Delivery fee is waived to `₹0` (shown in green) when EITHER is true:
+1. Subtotal ≥ `settings.freeDeliveryAbove` (default ₹500) → shows `(orders above ₹500) FREE`
+2. OR — customer applied a valid coupon with `discountType === 'free-delivery'` (e.g. `FREEBY`) → shows `(FREEBY coupon applied) FREE`
+
+⚠️ **Critical bug fixed (session Aug-14-2026):** The server correctly waived delivery charge on `free-delivery` coupons but the browser UI kept the old fee in the total. This created a *trust mismatch* — the displayed total was higher than what was actually charged. Now the waive rule is shared between server `orders/create` route.ts and the CartDrawer component — exact parity.
 
 #### Step 2 — Checkout Form
 - **Full Name** (sanitized against XSS).
 - **Phone Number** (10 digits).
 - **Order Type**: Dine-In / Takeaway / Home Delivery.
-- **Delivery Area**: Dropdown populated from `site_settings.deliveryAreas` configured by admin.
+- **Delivery Area**: Dropdown populated from `site_settings.deliveryAreas` configured by admin. Areas deactivated in Admin are hidden from this list live.
 - **Address & Landmark** (required for delivery).
 - **GPS Location Capture**: Geolocation coordinates captured via browser and geocoded via Nominatim reverse-lookup.
 
 #### Step 3 — WhatsApp Confirmation (Ghost-Order Defense)
-- Opens WhatsApp in new tab with pre-filled order receipt details.
+- Opens WhatsApp in new tab with pre-filled order receipt details. The recipient phone number is **read from settings.whatsappNumber** (NOT hardcoded).
 - Displays modal: *"WhatsApp is open! Tap Send in WhatsApp to submit your order."*
 - Clicks **"✓ Yes, I sent the message"** → Order is written to Supabase, cart cleared, redirects to `/track/[orderId]`.
 - Prevents dummy orders from entering the system.

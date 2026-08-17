@@ -99,13 +99,20 @@ export default function Footer() {
               Quick Links
             </h4>
             <ul className="flex flex-col gap-2.5">
-              {quickLinks.map(link => (
-                <li key={link}>
+              {[
+                { label: 'Home', href: '/' },
+                { label: 'Our Menu', href: '/#menu-section' },
+                { label: 'About Us', href: '/about' },
+                { label: 'Our Services', href: '/#services-section' },
+                { label: 'Client Stories', href: '/client-stories' },
+                { label: 'Contact', href: '/#footer-section' }
+              ].map(link => (
+                <li key={link.label}>
                   <Link
-                    href={link === 'Our Menu' ? '#menu-section' : '#'}
+                    href={link.href}
                     className="font-body text-[13px] text-brand-body hover:text-brand-red transition-colors duration-150"
                   >
-                    {link}
+                    {link.label}
                   </Link>
                 </li>
               ))}
@@ -118,11 +125,21 @@ export default function Footer() {
               Our Services
             </h4>
             <ul className="flex flex-col gap-2.5">
-              {servicesList.map(s => (
-                <li key={s}>
-                  <span className="font-body text-[13px] text-brand-body">
-                    {s}
-                  </span>
+              {[
+                { name: 'Menu Engineering', slug: 'menu-engineering' },
+                { name: 'Brand Identity Design', slug: 'brand-identity' },
+                { name: 'Kitchen Setup & Layout', slug: 'kitchen-setup' },
+                { name: 'Staff Training Programs', slug: 'staff-training' },
+                { name: 'Cost & Margin Optimization', slug: 'cost-optimization' },
+                { name: 'Full F&B Consulting', slug: 'full-consulting' }
+              ].map(s => (
+                <li key={s.slug}>
+                  <Link
+                    href={`/services/${s.slug}`}
+                    className="font-body text-[13px] text-brand-body hover:text-brand-red transition-colors duration-150"
+                  >
+                    {s.name}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -186,20 +203,38 @@ export default function Footer() {
         </div>
 
         {/* Row 3 — Bottom Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-6 border-t border-brand-border">
-          <p className="font-body text-[12px] text-[#888888]">
-            © {new Date().getFullYear()} HFC Consultancy Services. All rights reserved.
-          </p>
+        <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-6 border-t border-brand-border">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-center sm:text-left">
+            <p className="font-body text-[12px] text-[#888888]">
+              © {new Date().getFullYear()} HFC Consultancy Services. All rights reserved.
+            </p>
+            <span className="hidden sm:inline text-gray-300">|</span>
+            <p className="font-body text-[12px] text-[#888888]">
+              Powered by{' '}
+              <a
+                href="https://net-quora-x-agency.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold text-brand-red hover:underline transition-all"
+              >
+                Netquora X IT Solutions
+              </a>
+            </p>
+          </div>
 
           <div className="flex items-center gap-5">
-            {legalLinks.map(link => (
-              <a
-                key={link}
-                href="#"
+            {[
+              { label: 'Privacy Policy', href: '/privacy' },
+              { label: 'Terms of Service', href: '/terms' },
+              { label: 'Refund Policy', href: '/refund-policy' }
+            ].map(link => (
+              <Link
+                key={link.label}
+                href={link.href}
                 className="font-body text-[11px] text-[#888888] hover:text-brand-red transition-colors"
               >
-                {link}
-              </a>
+                {link.label}
+              </Link>
             ))}
           </div>
         </div>

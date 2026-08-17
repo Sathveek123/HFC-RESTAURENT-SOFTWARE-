@@ -50,6 +50,10 @@ export interface Settings {
 
   // Subscription Plans
   subscriptionPlans: SubscriptionPlan[]
+
+  // Kitchen Closing Parameters (configurable operating windows)
+  kitchenCloseHour: number
+  kitchenOpenHour: number
 }
 
 const defaultSettings: Settings = {
@@ -78,15 +82,18 @@ const defaultSettings: Settings = {
   cloudApiPhoneId: '',
 
   deliveryAreas: [
-    { id: 'area-1', name: 'Maruthi Nagar', isActive: true },
-    { id: 'area-2', name: 'Labour Colony', isActive: true },
-    { id: 'area-3', name: 'Sarojinidevi Flat Area', isActive: true }
+    { id: 'area-1', name: 'Labour Colony', isActive: true },
+    { id: 'area-2', name: 'Vamsadhara Colony', isActive: true },
+    { id: 'area-3', name: 'Palakonda Road', isActive: true }
   ],
 
   subscriptionPlans: [
-    { id: 'plan-1', name: 'Basic Tier', pricePerMonth: 3000, isActive: true },
-    { id: 'plan-2', name: 'Premium Cloud Plan', pricePerMonth: 5000, isActive: true }
-  ]
+    { id: 'plan-1', name: 'Growth Support Plan', pricePerMonth: 4500, isActive: true },
+    { id: 'plan-2', name: 'Standard Setup Plan', pricePerMonth: 6500, isActive: true }
+  ],
+
+  kitchenCloseHour: 22, // 10:00 PM
+  kitchenOpenHour: 4   // 4:00 AM
 }
 
 interface SettingsStore {

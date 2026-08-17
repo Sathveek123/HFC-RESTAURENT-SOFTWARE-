@@ -54,6 +54,7 @@ hfc-website/
 │   │   │   ├── page.tsx        # Orders list (realtime)
 │   │   │   └── [orderId]/page.tsx  # Order detail
 │   │   ├── products/page.tsx   # Products management (realtime)
+│   │   ├── kitchen/page.tsx    # Kitchen Display Monitor (KDS)
 │   │   ├── bills/page.tsx      # Bills & invoices (Supabase)
 │   │   ├── coupons/page.tsx    # Coupons, Offers & Reward Tiers (realtime)
 │   │   ├── agents/page.tsx     # Delivery agent management
@@ -67,8 +68,7 @@ hfc-website/
 │   │   └── [orderId]/page.tsx  # Live order tracker (customer-facing, realtime)
 │   └── api/
 │       └── admin/
-│           ├── agents/provision/route.ts  # Secure agent provisioning endpoint
-│           └── clean-orders/route.ts      # Admin maintenance endpoint
+│           └── agents/provision/route.ts  # Secure agent provisioning endpoint
 │
 ├── components/                 # Reusable React components
 │   ├── admin/                  # Admin panel components
@@ -93,12 +93,15 @@ hfc-website/
 │   ├── cartStore.ts            # Shopping cart (localStorage)
 │   ├── productsStore.ts        # Menu products — Supabase + Realtime + self-healer
 │   ├── promotionsStore.ts      # Coupons, Offers, Reward Tiers — Supabase + Realtime
-│   ├── billsStore.ts           # Bills — Supabase
-│   └── settingsStore.ts        # Business settings — Supabase + Realtime
+│   ├── settingsStore.ts        # Business settings — Supabase + Realtime
+│   ├── recipeStore.ts          # Recipe configuration mappings
+│   ├── inventoryStore.ts       # Raw material stock entries & closing logs
+│   └── billsStore.ts           # Bills — Supabase
 │
 ├── lib/                        # Utility functions
 │   ├── supabase.ts             # Supabase client singleton
 │   ├── supabaseSync.ts         # All sync functions, RPCs, and realtime subscriptions
+│   ├── inventoryHelpers.ts     # Consumption math & variance calculations
 │   └── whatsapp.ts             # WhatsApp message builder + link opener
 │
 ├── hooks/                      # Custom React hooks
@@ -107,7 +110,7 @@ hfc-website/
 ├── data/                       # Static seed data
 │   └── menuData.ts             # Default menu items (used as self-healer seed)
 │
-└── docs/                       # This documentation (15 files — v2.2.0)
+└── docs/                       # This documentation (16 files — v2.5.5)
 ```
 
 ---
@@ -118,7 +121,9 @@ hfc-website/
 ┌────────────────────────────────────────┐
 │     Supabase PostgreSQL (Cloud DB)     │  ← SINGLE SOURCE OF TRUTH
 │  orders · products · agents · bills   │
-│  settings (promotions + site config)  │
+│  settings (promotions · site config)  │
+│  ingredients · stock_entries · recipes │
+│  kitchen_closing · daily_stock_summary │
 └─────────────────┬──────────────────────┘
                   │  Realtime WebSockets
           ┌───────┴──────────┐
@@ -152,10 +157,17 @@ hfc-website/
 /admin/orders               → Orders list (all statuses, realtime)
 /admin/orders/[orderId]     → Order detail & management
 /admin/products             → Menu product management (realtime)
+/admin/inventory            → Live depletion levels & variance dashboard (realtime)
+/admin/inventory/stock      → Opening stock & inward vendor invoices
+/admin/inventory/recipes    → Map menu items to raw material recipe quantities
+/admin/inventory/purchase   → Procurement assistant with WhatsApp sharing exports
+/admin/inventory/reports    → Historical daily audits & shrinkage logs
 /admin/bills                → Bills & invoices
 /admin/coupons              → Coupons, Offers & Reward Tiers (realtime)
 /admin/agents               → Delivery agent accounts
 /admin/settings             → Business configuration (realtime)
+/admin/kitchen              → Kitchen Display Monitor (KDS)
+/admin/kitchen/closing      → Staff EOD physical remaining count submission
 /agent/login                → Agent authentication
 /agent/orders               → My Orders (agent-filtered, realtime)
 /agent/report               → My Report (personal analytics)
@@ -193,4 +205,4 @@ All order notifications use WhatsApp — no third-party API, zero cost:
 
 ---
 
-*Last updated: v2.2.0 — Full Credential Scrub & Production Final Deploy — August 14, 2026*
+*Last updated: v2.5.1 — KDS Navigation Alignment — August 15, 2026*

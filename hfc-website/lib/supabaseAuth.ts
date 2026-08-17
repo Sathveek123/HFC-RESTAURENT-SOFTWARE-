@@ -59,15 +59,10 @@ export async function authenticateAdminSupabase(
 }
 
 
-/**
- * Authenticate Agent via Supabase Auth with agent_name claim
- * Always returns true so agent flow never breaks — uses local fallback.
- */
 export async function authenticateAgentSupabase(
   username: string,
-  password: string,
-  agentName?: string
-): Promise<boolean> {
+  password: string
+): Promise<{ success: boolean; error?: string; session?: any }> {
   try {
     const email = `${username.toLowerCase().trim()}@hfc-agents.com`
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -76,27 +71,13 @@ export async function authenticateAgentSupabase(
     })
 
     if (error) {
-      try {
-        await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: {
-              role: 'agent',
-              username,
-              agent_name: agentName || username,
-            },
-          },
-        })
-      } catch (_) { /* swallow */ }
-    } else if (data.session) {
-      console.log(`Supabase Auth Agent ${username} logged in ✓`)
+      return { success: false, error: error.message }
     }
-  } catch (err) {
-    console.warn('Supabase Agent Auth session note:', err)
-  }
 
-  return true
+    return { success: true, session: data.session }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Authentication failed' }
+  }
 }
 
 /**

@@ -53,5 +53,5 @@ All user credentials (admins and delivery agents) are stored securely inside **S
 
 ---
 
-*Last updated: v2.2.0 (Full Credential Scrub & Monitoring) — August 14, 2026*
+*Last updated: v2.5.1 (KDS Navigation Alignment) — August 15, 2026*
 

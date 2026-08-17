@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react'
 import { ShoppingBag, Clock, IndianRupee } from 'lucide-react'
 import { useOrderStore } from '@/store/orderStore'
 import { useAgentsStore } from '@/store/agentsStore'
-import { subscribeToAllOrdersRealtime, fetchOrdersFromSupabase, fetchAgentsFromSupabase } from '@/lib/supabaseSync'
+import { subscribeToAllOrdersRealtime, fetchOrdersFromSupabase, fetchAgentsFromSupabase, subscribeToAgentsRealtime } from '@/lib/supabaseSync'
 import OrdersFilterTabs from '@/components/admin/orders/OrdersFilterTabs'
 import OrdersSearchBar from '@/components/admin/orders/OrdersSearchBar'
 import OrdersTable from '@/components/admin/orders/OrdersTable'
@@ -16,13 +16,26 @@ export default function AdminOrdersListPage() {
   const upsertOrder = useOrderStore(state => state.upsertOrder)
   const upsertAgents = useAgentsStore(state => state.upsertAgents)
 
-  // Fetch delivery agents to sync dropdown on mount
+  // Fetch delivery agents to sync dropdown on mount & listen to realtime updates
   useEffect(() => {
     fetchAgentsFromSupabase().then(fetched => {
       if (fetched && fetched.length > 0) {
         upsertAgents(fetched)
       }
     })
+
+    const unsubscribe = subscribeToAgentsRealtime(
+      (changedAgent) => {
+        upsertAgents([changedAgent])
+      },
+      (deletedId) => {
+        useAgentsStore.setState({
+          agents: useAgentsStore.getState().agents.filter(a => a.id !== deletedId)
+        })
+      }
+    )
+
+    return () => unsubscribe()
   }, [upsertAgents])
 
 

@@ -26,10 +26,11 @@
 │              │                                          │
 │  Dashboard   │                                          │
 │  Orders  🔴N │           Page Content Area              │
-│  Products    │                                          │
+│  Kitchen     │                                          │
 │  Bills       │                                          │
-│  Coupons     │                                          │
+│  Products    │                                          │
 │  Agents      │                                          │
+│  Coupons     │                                          │
 │  Settings    │                                          │
 │              │                                          │
 └──────────────┴──────────────────────────────────────────┘
@@ -37,6 +38,7 @@
 
 - Fixed left sidebar navigation with hover highlights.
 - The `Orders` tab displays a **pulsing red dot badge** showing the count of unseen orders.
+- The `Kitchen View` tab displays a **red notification badge** showing the count of orders in preparation.
 - Responsive: the sidebar transitions to a bottom navigation layout on mobile viewports.
 
 ---
@@ -78,6 +80,21 @@
   - **Status Updates**: Accept Order, Mark Prepared, Out For Delivery, Mark Delivered, Reject, Cancel.
   - **Rider Assignment**: Assign to active riders (notifying them via WhatsApp links).
   - **Quick Actions**: View customer tracker link, Duplicate Order (assigns a fresh UUID), and Toggle Regular Customer loyalty status.
+
+---
+
+## 🍳 Kitchen View Monitor (KDS)
+
+**URL:** `/admin/kitchen`  
+**File:** `app/admin/kitchen/page.tsx`
+
+- **Active Cooking Feed**: Real-time list showing accepted orders (`status = 'accepted'`) sorted by oldest first.
+- **Chef Bell Alerts**: Generates a high-fidelity soft kitchen bell tone (Web Audio API) when new orders are accepted to catch cook attention.
+- **Time Elapsed color-coding**: Timers calculate elapsed cooking duration and flash red warning pulses if delay > 20 minutes.
+- **Wall-Mount mode**: A text-scaling accessibility toggle that increases dish name sizes by 40% for kitchen-mounted screens.
+- **"Mark Ready" Transition**: Cook clicks "Food Ready & Packed" to atomically transition the order to `ready` status.
+- **KDS Screen Lock Security**: Allows locking the tablet screen with a temporary 4-digit passcode for unattended wall-mount operation.
+  - **Bypass / Recovery Path**: Since the session passcode is stored in RAM (component state), if a cook forgets the PIN, simply refresh the browser (F5). The page will reload, the lock will reset to unlocked, and the latest active orders will be hydrated from the Supabase database instantly (<1s) with zero loss of order history.
 
 ---
 

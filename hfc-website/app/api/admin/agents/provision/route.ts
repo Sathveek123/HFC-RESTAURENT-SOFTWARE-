@@ -8,10 +8,18 @@ import { createClient } from '@supabase/supabase-js'
  */
 export async function POST(req: Request) {
   try {
-    const { name, username, password, coverageArea, vehicleType } = await req.json()
+    const { id, name, username, password, whatsapp, coverageArea, vehicleType } = await req.json()
 
-    if (!username || !password || !name) {
-      return NextResponse.json({ error: 'Missing required agent fields' }, { status: 400 })
+    // Validation checks depending on whether it is an update or a new account creation
+    const isUpdate = !!id
+    if (isUpdate) {
+      if (!name || !username || !whatsapp) {
+        return NextResponse.json({ error: 'Missing required agent fields' }, { status: 400 })
+      }
+    } else {
+      if (!name || !username || !password || !whatsapp) {
+        return NextResponse.json({ error: 'Missing required agent fields' }, { status: 400 })
+      }
     }
 
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cmwsffhenpckwkwgnmsy.supabase.co'
@@ -45,33 +53,111 @@ export async function POST(req: Request) {
     }
 
     const email = `${username.toLowerCase().trim()}@hfc-agents.com`
+    let agentId = id
 
-    // 1. Create or get Supabase Auth User with metadata claims
-    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email,
-      password,
-      email_confirm: true,
-      user_metadata: {
-        role: 'agent',
-        agent_name: name,
-        username,
-      },
-    })
+    if (isUpdate) {
+      let finalId = id
+      const isDummyId = id.startsWith('AGT-') || id.length < 36
 
-    if (authError && !authError.message.includes('already registered')) {
-      console.warn('Supabase Auth user creation warning:', authError.message)
+      if (isDummyId) {
+        // Recover legacy dummy ID
+        const { data: listData } = await supabaseAdmin.auth.admin.listUsers()
+        const existingUser = listData?.users?.find((u: any) => u.email?.toLowerCase() === email.toLowerCase())
+        if (existingUser) {
+          finalId = existingUser.id
+        } else {
+          // Create on the fly
+          const { data: newAuth, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+            email,
+            password: password || '123456',
+            email_confirm: true,
+            user_metadata: { role: 'agent', agent_name: name, username }
+          })
+          if (!createErr && newAuth?.user) {
+            finalId = newAuth.user.id
+          }
+        }
+
+        // Delete the old dummy ID agent row to prevent duplicate primary keys
+        if (finalId !== id) {
+          await supabaseAdmin.from('agents').delete().eq('id', id)
+          agentId = finalId
+        }
+      }
+
+      // Update metadata and credentials for the clean UUID
+      const updateData: any = {
+        email,
+        user_metadata: {
+          role: 'agent',
+          agent_name: name,
+          username,
+        }
+      }
+      if (password && password.trim().length >= 4) {
+        updateData.password = password
+      }
+
+      const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(agentId, updateData)
+      if (authError) {
+        console.warn('Supabase Auth user update error:', authError.message)
+        return NextResponse.json({ error: authError.message }, { status: 500 })
+      }
+    } else {
+      // 1b. Create new Supabase Auth User with metadata claims
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: {
+          role: 'agent',
+          agent_name: name,
+          username,
+        },
+      })
+
+      if (authError) {
+        if (authError.message.includes('already registered')) {
+          // Recover UUID by listing auth users and filtering by email
+          const { data: listData, error: listError } = await supabaseAdmin.auth.admin.listUsers()
+          let foundUser = null
+          if (!listError && listData?.users) {
+            foundUser = listData.users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase())
+          }
+          if (foundUser) {
+            agentId = foundUser.id
+            // Also update the password and metadata for this recovered user
+            const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(agentId, {
+              password,
+              user_metadata: {
+                role: 'agent',
+                agent_name: name,
+                username,
+              }
+            })
+            if (updateError) {
+              console.warn('Failed to update credentials of recovered agent:', updateError.message)
+            }
+          } else {
+            return NextResponse.json({ error: 'Agent username email already exists but could not be retrieved.' }, { status: 500 })
+          }
+        } else {
+          console.warn('Supabase Auth user creation error:', authError.message)
+          return NextResponse.json({ error: authError.message }, { status: 500 })
+        }
+      } else {
+        agentId = authUser?.user?.id
+      }
     }
 
-    // 2. Insert into public.agents database table
-    const agentId = authUser?.user?.id || `AGT-${Date.now().toString(36).slice(-5).toUpperCase()}`
-
+    // 2. Insert/Upsert into public.agents database table (NO PASSWORD FIELD!)
     const { data: agentRow, error: dbError } = await supabaseAdmin
       .from('agents')
       .upsert({
         id: agentId,
         name,
+        whatsapp,
         username,
-        password_hash: '***',
         is_active: true,
         vehicle_type: vehicleType || 'Bike',
         coverage_area: coverageArea || 'Central',
@@ -86,9 +172,9 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       agent: agentRow ? agentRow[0] : null,
-      message: `Agent ${name} provisioned securely with role claims`,
+      message: `Agent ${name} provisioned/updated securely with role claims`,
     })
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Provisioning failed' }, { status: 500 })
+    return NextResponse.json({ error: err.message || 'Provisioning/updating failed' }, { status: 500 })
   }
 }

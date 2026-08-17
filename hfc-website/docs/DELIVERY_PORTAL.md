@@ -71,6 +71,7 @@ Subscribes to all order changes using `subscribeToAllOrdersRealtime()`. The list
 - **Start Delivery**: Changes status from `accepted` / `ready` to `picked-up` in Supabase.
 - **Mark Delivered**: Triggers cash confirmation modal (if order is Cash). Commits `status = 'delivered'` and `paymentStatus = 'paid'` atomically to Supabase.
 - **View Bill**: Opens the order's tracker receipt.
+- **Open Map (Maps Navigation)**: When coordinates (`coords.lat/lng`) are captured for a delivery address, an "Open map" (📍) button is shown next to the address in the agent orders list. Clicking it launches a Google Maps navigation deep link to the exact latitude and longitude pin, minimizing delivery friction.
 
 ---
 
@@ -93,5 +94,6 @@ Subscribes to all order changes using `subscribeToAllOrdersRealtime()`. The list
 | **Bulk Data Access** | Scoped `SELECT` policy on `public.orders` where `assigned_agent = auth.jwt()` | PostgreSQL RLS |
 | **Cross-Rider Updates** | Scoped `UPDATE` policy on `public.orders` | PostgreSQL RLS |
 | **Billing Privacy** | Bills select scoped to orders where `assigned_agent = auth.jwt()` | PostgreSQL RLS |
-| **Session Longevity** | Persistent `localStorage` credentials |zustand store |
+| **Session Longevity** | Persistent `localStorage` credentials | zustand store |
 | **API Endpoints** | Fail-closed token inspection | `/api/admin/agents/provision` |
+| **Teammate Directory Exposure** | Restricted `get_all_agents()` RPC strictly to admin and removed teammate fetch hook from agent orders page | PL/pgSQL role check & mount hook cleanup |

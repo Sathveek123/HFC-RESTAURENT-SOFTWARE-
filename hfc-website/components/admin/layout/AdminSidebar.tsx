@@ -7,10 +7,13 @@ import {
   ShoppingBag,
   Receipt,
   UtensilsCrossed,
+  ChefHat,
   Truck,
   Tag,
   Settings,
-  LogOut
+  LogOut,
+  X,
+  Package
 } from 'lucide-react'
 import Image from 'next/image'
 import { useAdminAuthStore } from '@/store/adminAuthStore'
@@ -24,12 +27,27 @@ export default function AdminSidebar() {
   const orders = useOrderStore(state => state.orders)
 
   const [mounted, setMounted] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
+
   useEffect(() => {
     setMounted(true)
   }, [])
 
+  // Listen for hamburger toggle event
+  useEffect(() => {
+    const handleToggle = () => setIsOpen(prev => !prev)
+    window.addEventListener('toggle-admin-sidebar', handleToggle)
+    return () => window.removeEventListener('toggle-admin-sidebar', handleToggle)
+  }, [])
+
+  // Auto-close mobile sidebar when path changes
+  useEffect(() => {
+    setIsOpen(false)
+  }, [pathname])
+
   const newOrdersCount = mounted ? orders.filter(o => !o.seenByAdmin && o.status === 'placed').length : 0
   const pendingOrdersCount = mounted ? orders.filter(o => o.status === 'placed').length : 0
+  const kitchenOrdersCount = mounted ? orders.filter(o => o.status === 'accepted').length : 0
 
   const handleLogout = () => {
     logout()
@@ -50,6 +68,12 @@ export default function AdminSidebar() {
       badge: pendingOrdersCount > 0 ? pendingOrdersCount : undefined,
     },
     {
+      label: 'Kitchen View',
+      href: '/admin/kitchen',
+      icon: ChefHat,
+      badge: kitchenOrdersCount > 0 ? kitchenOrdersCount : undefined,
+    },
+    {
       label: 'Bills',
       href: '/admin/bills',
       icon: Receipt,
@@ -58,6 +82,11 @@ export default function AdminSidebar() {
       label: 'Products',
       href: '/admin/products',
       icon: UtensilsCrossed,
+    },
+    {
+      label: 'Inventory',
+      href: '/admin/inventory',
+      icon: Package,
     },
     {
       label: 'Delivery Agents',
@@ -76,10 +105,10 @@ export default function AdminSidebar() {
     },
   ]
 
-  return (
-    <aside className="w-[260px] h-screen bg-white border-r border-brand-border flex flex-col flex-shrink-0 sticky top-0">
+  const renderSidebarContent = () => (
+    <>
       {/* Top Brand Section */}
-      <div className="p-6 border-b border-brand-border flex-shrink-0">
+      <div className="p-6 border-b border-brand-border flex-shrink-0 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="relative w-10 h-10 rounded-full overflow-hidden border border-brand-border flex-shrink-0">
             <Image
@@ -96,6 +125,14 @@ export default function AdminSidebar() {
             </span>
           </div>
         </div>
+
+        {/* Mobile close button */}
+        <button
+          onClick={() => setIsOpen(false)}
+          className="lg:hidden p-1.5 text-brand-muted hover:text-brand-black transition-colors"
+        >
+          <X size={18} />
+        </button>
       </div>
 
       {/* Navigation Links */}
@@ -132,7 +169,7 @@ export default function AdminSidebar() {
       <div className="p-4 border-t border-brand-border bg-white flex-shrink-0">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-3 text-brand-body hover:text-red-600 w-full rounded-btn hover:bg-red-50 transition-all text-left"
+          className="flex items-center gap-3 px-4 py-3 text-brand-body hover:text-red-600 w-full rounded-btn hover:bg-red-50 transition-all text-left cursor-pointer"
         >
           <LogOut size={18} />
           <span className="font-brand font-medium text-[13.5px]">Sign Out</span>
@@ -141,6 +178,31 @@ export default function AdminSidebar() {
           Logged in as <span className="font-semibold text-brand-black">hfc_admin</span>
         </p>
       </div>
-    </aside>
+    </>
+  )
+
+  return (
+    <>
+      {/* 1. Desktop Persistent Sidebar */}
+      <aside className="w-[260px] h-screen bg-white border-r border-brand-border flex-col flex-shrink-0 sticky top-0 hidden lg:flex">
+        {renderSidebarContent()}
+      </aside>
+
+      {/* 2. Mobile Drawer Sidebar Overlay */}
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex lg:hidden">
+          {/* Backdrop overlay */}
+          <div
+            onClick={() => setIsOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity duration-200"
+          />
+
+          {/* Drawer Sidebar Content */}
+          <aside className="relative w-[260px] h-full bg-white flex flex-col z-10 shadow-2xl animate-slide-right">
+            {renderSidebarContent()}
+          </aside>
+        </div>
+      )}
+    </>
   )
 }

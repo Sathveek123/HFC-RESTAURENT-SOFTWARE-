@@ -8,7 +8,7 @@ import {
 import toast from 'react-hot-toast'
 import { useAgentsStore, Agent } from '@/store/agentsStore'
 import { useOrderStore } from '@/store/orderStore'
-import { fetchAgentsFromSupabase } from '@/lib/supabaseSync'
+import { fetchAgentsFromSupabase, subscribeToAgentsRealtime } from '@/lib/supabaseSync'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -46,7 +46,7 @@ function EditModal({ agent, onClose }: EditModalProps) {
   const [name, setName] = useState(agent.name)
   const [whatsapp, setWhatsapp] = useState(agent.whatsapp)
   const [username, setUsername] = useState(agent.username)
-  const [password, setPassword] = useState(agent.password)
+  const [password, setPassword] = useState('')
   const [vehicleType, setVehicleType] = useState(agent.vehicleType ?? '')
   const [coverageArea, setCoverageArea] = useState(agent.coverageArea ?? '')
   const [showPwd, setShowPwd] = useState(false)
@@ -62,12 +62,13 @@ function EditModal({ agent, onClose }: EditModalProps) {
   }
 
   const whatsappValid = /^\d{10,13}$/.test(whatsapp)
+  const passwordValid = password.length === 0 || password.length >= 4
   const canSave =
     name.trim().length > 0 &&
     whatsappValid &&
     username.length >= 4 &&
     usernameStatus === 'ok' &&
-    password.length >= 4
+    passwordValid
 
   const handleSave = () => {
     if (!canSave) return
@@ -75,11 +76,10 @@ function EditModal({ agent, onClose }: EditModalProps) {
       name: name.trim(),
       whatsapp,
       username,
-      password,
+      password: password || undefined,
       vehicleType: (vehicleType as Agent['vehicleType']) || null,
       coverageArea: coverageArea.trim() || null,
     })
-    toast.success(`${name.trim()} updated ✓`)
     onClose()
   }
 
@@ -125,7 +125,7 @@ function EditModal({ agent, onClose }: EditModalProps) {
             <div className="relative">
               <input type={showPwd ? 'text' : 'password'} value={password}
                 onChange={e => setPassword(e.target.value)}
-                className={`${inputCls} pr-11`} placeholder="min 4 chars" />
+                className={`${inputCls} pr-11`} placeholder="leave blank to keep unchanged" />
               <button type="button" onClick={() => setShowPwd(!showPwd)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-brand-muted hover:text-brand-black transition-colors">
                 {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
@@ -304,13 +304,26 @@ export default function AdminAgentsPage() {
   const orders = useOrderStore(state => state.orders)
   const upsertAgents = useAgentsStore(state => state.upsertAgents)
 
-  // Sync agents from Supabase on mount
+  // Sync agents from Supabase on mount & listen to realtime updates
   useEffect(() => {
     fetchAgentsFromSupabase().then(fetched => {
-      if (fetched && fetched.length > 0) {
-        upsertAgents(fetched)
+      if (fetched) {
+        useAgentsStore.setState({ agents: fetched })
       }
     })
+
+    const unsubscribe = subscribeToAgentsRealtime(
+      (changedAgent) => {
+        upsertAgents([changedAgent])
+      },
+      (deletedId) => {
+        useAgentsStore.setState({
+          agents: useAgentsStore.getState().agents.filter(a => a.id !== deletedId)
+        })
+      }
+    )
+
+    return () => unsubscribe()
   }, [upsertAgents])
 
   // Active agent count
@@ -368,7 +381,6 @@ export default function AdminAgentsPage() {
       vehicleType: null,
       coverageArea: null,
     })
-    toast.success(`${name.trim()} added as a delivery agent ✓`)
     setName(''); setWhatsapp(''); setUsername(''); setPassword('')
     setUsernameStatus('idle'); setWhatsappTouched(false)
   }

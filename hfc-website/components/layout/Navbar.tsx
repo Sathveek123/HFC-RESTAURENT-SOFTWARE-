@@ -31,9 +31,13 @@ export default function Navbar() {
 
   const scrollToSection = (id: string) => {
     setMobileMenuOpen(false)
-    const el = document.getElementById(id)
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' })
+    if (pathname === '/') {
+      const el = document.getElementById(id)
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth' })
+      }
+    } else {
+      window.location.href = `/#${id}`
     }
   }
 
@@ -73,13 +77,21 @@ export default function Navbar() {
             <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-brand-red transition-all duration-200 group-hover:w-full" />
           </button>
           
-          <button
-            onClick={() => scrollToSection('hero-section')}
+          <a
+            href="/about"
             className="font-body font-semibold text-[14px] text-brand-black hover:text-brand-red transition-colors relative py-1 group"
           >
             About
             <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-brand-red transition-all duration-200 group-hover:w-full" />
-          </button>
+          </a>
+
+          <a
+            href="/pricing"
+            className="font-body font-semibold text-[14px] text-brand-black hover:text-brand-red transition-colors relative py-1 group"
+          >
+            Pricing
+            <span className="absolute bottom-0 left-0 w-0 h-[2px] bg-brand-red transition-all duration-200 group-hover:w-full" />
+          </a>
 
           <button
             onClick={() => scrollToSection('footer-section')}
@@ -130,12 +142,20 @@ export default function Navbar() {
           >
             Menu
           </button>
-          <button
-            onClick={() => scrollToSection('hero-section')}
+          <a
+            href="/about"
+            onClick={() => setMobileMenuOpen(false)}
             className="font-brand font-bold text-[24px] text-brand-black"
           >
             About
-          </button>
+          </a>
+          <a
+            href="/pricing"
+            onClick={() => setMobileMenuOpen(false)}
+            className="font-brand font-bold text-[24px] text-brand-black"
+          >
+            Pricing
+          </a>
           <button
             onClick={() => scrollToSection('footer-section')}
             className="font-brand font-bold text-[24px] text-brand-black"
