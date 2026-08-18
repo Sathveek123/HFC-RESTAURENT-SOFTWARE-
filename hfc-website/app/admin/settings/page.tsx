@@ -5,6 +5,7 @@ import { CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useSettingsStore, Settings } from '@/store/settingsStore'
 import { subscribeToSettingRealtime } from '@/lib/supabaseSync'
+import { QRCodeSVG } from 'qrcode.react'
 
 
 function FormLabel({ children }: { children: React.ReactNode }) {
@@ -455,6 +456,86 @@ export default function AdminSettingsPage() {
                 {paymentWarning}
               </div>
             )}
+          </div>
+        </div>
+
+        {/* CARD 4b — COUNTER TAKEAWAY QR CODE */}
+        <div className="bg-white border border-brand-border rounded-[12px] p-6 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="space-y-2">
+            <h2 className="font-display font-bold text-[19px] text-brand-black">Counter QR Code</h2>
+            <p className="font-body text-[13.5px] text-[#4A4A4A] leading-relaxed max-w-[450px]">
+              Display this QR code at your checkout counter. Walk-in customers can scan this to open the self-service menu, place takeaway orders, and track their tokens live.
+            </p>
+            <div className="font-mono text-[11px] bg-brand-surface border border-brand-border rounded-[6px] px-3 py-1.5 inline-block text-brand-black select-all">
+              https://hfc-restaurent-software.vercel.app/counter
+            </div>
+          </div>
+          
+          <div className="flex flex-col items-center gap-3 bg-brand-surface p-4 border border-brand-border rounded-[12px] flex-shrink-0">
+            <QRCodeSVG
+              value="https://hfc-restaurent-software.vercel.app/counter"
+              size={120}
+              level="H"
+              includeMargin={true}
+              id="counter-qr-code-svg"
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const win = window.open('', '_blank')
+                if (win) {
+                  const svgHtml = document.getElementById('counter-qr-code-svg')?.outerHTML || '';
+                  win.document.write(`
+                    <html>
+                      <head>
+                        <title>Print Counter QR Code</title>
+                        <style>
+                          body {
+                            font-family: sans-serif;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            height: 90vh;
+                            text-align: center;
+                            margin: 0;
+                            background: #FAFAFA;
+                          }
+                          .card {
+                            border: 3px solid #E11D48;
+                            border-radius: 24px;
+                            padding: 40px;
+                            max-width: 400px;
+                            background: white;
+                            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+                          }
+                          h1 { color: #E11D48; margin-bottom: 5px; font-size: 28px; font-weight: 900; letter-spacing: -0.5px; }
+                          p { color: #4B5563; font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
+                          .qr-wrapper { margin: 30px 0; display: flex; justify-content: center; }
+                          svg { width: 220px; height: 220px; }
+                        </style>
+                      </head>
+                      <body>
+                        <div class="card">
+                          <h1>HFC Counter Ordering</h1>
+                          <p>Scan this QR to browse menu, order takeaway, and get your sequence token directly on your phone!</p>
+                          <div class="qr-wrapper">
+                            ${svgHtml}
+                          </div>
+                          <p style="font-weight: bold; font-size: 12px; margin-top: 15px; text-transform: uppercase; color: #E11D48; letter-spacing: 1px;">Self-Service Takeaway Stand</p>
+                        </div>
+                        <script>
+                          setTimeout(function() { window.print(); }, 250);
+                        </script>
+                      </body>
+                    </html>
+                  `)
+                  win.document.close()
+                }
+              }}
+              className="bg-brand-black hover:bg-brand-red text-white font-brand font-bold text-[11px] uppercase tracking-[1px] h-[34px] px-4 rounded-[6px] transition-colors cursor-pointer"
+            >
+              Print QR Card
+            </button>
           </div>
         </div>
 
