@@ -48,7 +48,7 @@ export default function AdminSidebar() {
     fetchActiveCount()
 
     const channel = supabase
-      .channel('sidebar-tables-count')
+      .channel(`sidebar-tables-count-${Math.random().toString(36).substring(2, 9)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'table_sessions' }, () => {
         fetchActiveCount()
       })

@@ -255,7 +255,7 @@ export default function KitchenViewPage() {
     fetchTableKots()
 
     const ch = supabase
-      .channel('kds-table-kots')
+      .channel(`kds-table-kots-${Math.random().toString(36).substring(2, 9)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'table_orders' }, fetchTableKots)
       .subscribe()
 

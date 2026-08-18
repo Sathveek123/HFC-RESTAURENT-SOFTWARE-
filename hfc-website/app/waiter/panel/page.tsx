@@ -61,7 +61,7 @@ export default function WaiterPanelPage() {
     fetchActiveOrders()
 
     const channel = supabase
-      .channel('waiter-panel-realtime')
+      .channel(`waiter-panel-realtime-${Math.random().toString(36).substring(2, 9)}`)
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'table_orders' },

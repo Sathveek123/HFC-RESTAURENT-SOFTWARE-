@@ -142,7 +142,7 @@ export default function AdminTablesPage() {
 
     // 2. Real-time updates subscription
     const tablesChannel = supabase
-      .channel('admin-tables-dashboard')
+      .channel(`admin-tables-dashboard-${Math.random().toString(36).substring(2, 9)}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'restaurant_tables' }, () => {
         loadData()
       })

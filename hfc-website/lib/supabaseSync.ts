@@ -285,7 +285,7 @@ export function subscribeToAllOrdersRealtime(
   onOrderChange: (order: OrderRecord) => void
 ) {
   const channel = supabase
-    .channel('all-orders-live')
+    .channel(`all-orders-live-${Math.random().toString(36).substring(2, 9)}`)
     .on(
       'postgres_changes',
       {
@@ -528,7 +528,7 @@ export function subscribeToProductsRealtime(
   onDeleted: (id: string) => void
 ): () => void {
   const channel = supabase
-    .channel('products-realtime')
+    .channel(`products-realtime-${Math.random().toString(36).substring(2, 9)}`)
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'products' },
@@ -592,7 +592,7 @@ export function subscribeToSettingRealtime(
   onChanged: (value: any) => void
 ): () => void {
   const channel = supabase
-    .channel(`setting-${key}-realtime`)
+    .channel(`setting-${key}-realtime-${Math.random().toString(36).substring(2, 9)}`)
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'settings', filter: `key=eq.${key}` },
@@ -617,7 +617,7 @@ export function subscribeToAgentsRealtime(
   onDeleted: (id: string) => void
 ): () => void {
   const channel = supabase
-    .channel('agents-realtime-channel')
+    .channel(`agents-realtime-channel-${Math.random().toString(36).substring(2, 9)}`)
     .on(
       'postgres_changes',
       { event: '*', schema: 'public', table: 'agents' },
