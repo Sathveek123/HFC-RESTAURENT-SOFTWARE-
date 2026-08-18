@@ -14,7 +14,8 @@ import {
   LogOut,
   X,
   Package,
-  LayoutGrid
+  LayoutGrid,
+  Users
 } from 'lucide-react'
 import Image from 'next/image'
 import { useAdminAuthStore } from '@/store/adminAuthStore'
@@ -124,6 +125,11 @@ export default function AdminSidebar() {
       label: 'Delivery Agents',
       href: '/admin/agents',
       icon: Truck,
+    },
+    {
+      label: 'Waiter Staff',
+      href: '/admin/waiters',
+      icon: Users,
     },
     {
       label: 'Offers & Coupons',
