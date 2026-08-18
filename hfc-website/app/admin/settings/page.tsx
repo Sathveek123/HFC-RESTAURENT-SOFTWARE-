@@ -413,6 +413,18 @@ export default function AdminSettingsPage() {
                 className={inputCls}
               />
             </div>
+
+            {/* Packaging Charge */}
+            <div>
+              <FormLabel>Packaging Charge (₹) (takeaway orders only)</FormLabel>
+              <input
+                type="number"
+                step="0.01"
+                value={draft.packagingCharge}
+                onChange={e => handleFieldChange('packagingCharge', parseFloat(e.target.value) || 0)}
+                className={inputCls}
+              />
+            </div>
           </div>
 
           {/* Payment Checkboxes */}
@@ -472,6 +484,89 @@ export default function AdminSettingsPage() {
                 onChange={e => handleFieldChange('cloudApiPhoneId', e.target.value)}
                 className={`${inputCls} font-mono`}
               />
+            </div>
+          </div>
+        </div>
+
+        {/* CARD 5b — RIDER PERFORMANCE SETTINGS */}
+        <div className="bg-white border border-brand-border rounded-[12px] p-6 shadow-sm">
+          <h2 className="font-display font-bold text-[19px] text-brand-black mb-1">Rider Performance</h2>
+          <p className="font-body text-[12.5px] text-[#6A6A6A] leading-relaxed mb-5">
+            Configure how rider commissions are calculated, the on-time benchmark, and target delivery volume used in the Rider Score calculation.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
+            {/* Earning Model */}
+            <div>
+              <FormLabel>Commission Model</FormLabel>
+              <select
+                value={draft.riderEarningModel ?? 'flat'}
+                onChange={e => handleFieldChange('riderEarningModel', e.target.value as 'flat' | 'percent')}
+                className={selectCls}
+              >
+                <option value="flat">Flat fee per delivery</option>
+                <option value="percent">% of delivery charge</option>
+              </select>
+            </div>
+
+            {/* Flat Fee */}
+            {(draft.riderEarningModel ?? 'flat') === 'flat' && (
+              <div>
+                <FormLabel>Flat fee per delivery (₹)</FormLabel>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={draft.riderFlatFee ?? 30}
+                  onChange={e => handleFieldChange('riderFlatFee', parseFloat(e.target.value) || 0)}
+                  className={inputCls}
+                />
+                <p className="font-body text-[11px] text-[#6A6A6A] mt-1">Added to rider earnings per delivered order</p>
+              </div>
+            )}
+
+            {/* Percent of delivery charge */}
+            {(draft.riderEarningModel ?? 'flat') === 'percent' && (
+              <div>
+                <FormLabel>Rider % of delivery charge</FormLabel>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={draft.riderEarningPercent ?? 50}
+                  onChange={e => handleFieldChange('riderEarningPercent', parseFloat(e.target.value) || 0)}
+                  className={inputCls}
+                />
+                <p className="font-body text-[11px] text-[#6A6A6A] mt-1">e.g. 50% of ₹60 delivery charge → ₹30 rider earning</p>
+              </div>
+            )}
+
+            {/* Default ETA */}
+            <div>
+              <FormLabel>Default ETA (minutes)</FormLabel>
+              <input
+                type="number"
+                min="5"
+                step="5"
+                value={draft.defaultEtaMinutes ?? 30}
+                onChange={e => handleFieldChange('defaultEtaMinutes', parseInt(e.target.value) || 30)}
+                className={inputCls}
+              />
+              <p className="font-body text-[11px] text-[#6A6A6A] mt-1">Benchmark used for On-Time Performance calculation</p>
+            </div>
+
+            {/* Target Volume */}
+            <div>
+              <FormLabel>Monthly target deliveries per rider</FormLabel>
+              <input
+                type="number"
+                min="1"
+                step="1"
+                value={draft.riderTargetVolume ?? 20}
+                onChange={e => handleFieldChange('riderTargetVolume', parseInt(e.target.value) || 20)}
+                className={inputCls}
+              />
+              <p className="font-body text-[11px] text-[#6A6A6A] mt-1">Used in the 20% volume component of the Rider Score</p>
             </div>
           </div>
         </div>

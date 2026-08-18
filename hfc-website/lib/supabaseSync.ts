@@ -31,6 +31,13 @@ export function orderToRow(order: OrderRecord) {
     created_at: order.createdAt,
     updated_at: order.updatedAt || new Date().toISOString(),
     timestamp: order.timestamp || Date.now(),
+    source: order.source || 'website',
+    token_number: order.tokenNumber || null,
+    packaging_charge: order.packagingCharge || 0,
+    picked_up_at: order.pickedUpAt || null,
+    kitchen_source: order.kitchenSource || 'HFC Main Kitchen',
+    rider_earning: order.riderEarning || 0,
+    estimated_delivery_minutes: order.estimatedDeliveryMinutes || 30,
   }
 }
 
@@ -64,6 +71,13 @@ export function rowToOrder(row: any): OrderRecord {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     timestamp: Number(row.timestamp) || new Date(row.created_at).getTime(),
+    source: row.source || 'website',
+    tokenNumber: row.token_number || undefined,
+    packagingCharge: row.packaging_charge != null ? Number(row.packaging_charge) : undefined,
+    pickedUpAt: row.picked_up_at || null,
+    kitchenSource: row.kitchen_source || 'HFC Main Kitchen',
+    riderEarning: Number(row.rider_earning) || 0,
+    estimatedDeliveryMinutes: Number(row.estimated_delivery_minutes) || 30,
   }
 }
 
@@ -303,6 +317,7 @@ export function agentToRow(agent: any) {
     vehicle_type: agent.vehicleType || null,
     coverage_area: agent.coverageArea || null,
     total_deliveries: agent.totalDeliveries || 0,
+    delivery_rate: agent.deliveryRate || 40,
     created_at: agent.createdAt,
   }
 }
@@ -317,6 +332,7 @@ export function rowToAgent(row: any) {
     vehicleType: row.vehicle_type || null,
     coverageArea: row.coverage_area || null,
     totalDeliveries: Number(row.total_deliveries) || 0,
+    deliveryRate: Number(row.delivery_rate) || 40,
     createdAt: row.created_at,
   }
 }

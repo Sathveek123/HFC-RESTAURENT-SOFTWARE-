@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS public.agents (
     vehicle_type TEXT,
     coverage_area TEXT,
     total_deliveries INTEGER NOT NULL DEFAULT 0,
+    delivery_rate NUMERIC(10,2) NOT NULL DEFAULT 40.00,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -420,7 +421,7 @@ BEGIN
   END IF;
 
   INSERT INTO public.agents (
-    id, name, whatsapp, username, is_active, vehicle_type, coverage_area, total_deliveries, created_at
+    id, name, whatsapp, username, is_active, vehicle_type, coverage_area, total_deliveries, created_at, delivery_rate
   )
   VALUES (
     agent_row->>'id',
@@ -431,7 +432,8 @@ BEGIN
     agent_row->>'vehicle_type',
     agent_row->>'coverage_area',
     COALESCE((agent_row->>'total_deliveries')::INTEGER, 0),
-    COALESCE((agent_row->>'created_at')::TIMESTAMPTZ, NOW())
+    COALESCE((agent_row->>'created_at')::TIMESTAMPTZ, NOW()),
+    COALESCE((agent_row->>'delivery_rate')::NUMERIC, 40.00)
   )
   ON CONFLICT (id) DO UPDATE SET
     name = EXCLUDED.name,
@@ -440,7 +442,8 @@ BEGIN
     is_active = EXCLUDED.is_active,
     vehicle_type = EXCLUDED.vehicle_type,
     coverage_area = EXCLUDED.coverage_area,
-    total_deliveries = EXCLUDED.total_deliveries;
+    total_deliveries = EXCLUDED.total_deliveries,
+    delivery_rate = EXCLUDED.delivery_rate;
 END;
 $$;
 

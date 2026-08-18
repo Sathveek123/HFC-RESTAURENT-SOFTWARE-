@@ -1,7 +1,7 @@
 # ⚡ HFC Supabase Integration — Complete Documentation
 
-**Project Reference:** `cmwsffhenpckwkwgnmsy`  
-**API Endpoint:** `https://cmwsffhenpckwkwgnmsy.supabase.co`  
+**Project Reference:** `[YOUR_SUPABASE_PROJECT_REF]`  
+**API Endpoint:** `https://[YOUR_SUPABASE_PROJECT_REF].supabase.co`  
 **Client SDK:** `@supabase/supabase-js`
 
 ---
@@ -138,7 +138,6 @@ To eliminate TOCTOU (Time-of-Check to Time-of-Use) race conditions and prevent s
 | `vehicle_type` | TEXT | Bike / Scooter / Bicycle / On-foot |
 | `coverage_area` | TEXT | Delivery zone description |
 | `total_deliveries` | INTEGER | Completed deliveries counter |
-
 ### 4. `bills` Table
 | Column | Type | Description |
 |--------|------|-------------|
@@ -146,7 +145,13 @@ To eliminate TOCTOU (Time-of-Check to Time-of-Use) race conditions and prevent s
 | `order_id` | TEXT | Foreign Key -> `orders.id` |
 | `customer_name` | TEXT | Customer name |
 | `subtotal`, `gst`, `total` | NUMERIC(10,2) | Breakdown amounts |
+| `delivery_charge` | NUMERIC(10,2) | Delivery fee amount |
+| `discount_amount` | NUMERIC(10,2) | Applied coupon discount |
 | `payment_status` | TEXT | `paid` \| `unpaid` |
+| `items` | JSONB | Item details replicated from order |
+| `payment_method` | TEXT | `Cash` \| `UPI` \| `Online` \| `Card` |
+| `order_type` | TEXT | `dine-in` \| `takeaway` \| `delivery` |
+| `coupon_code` | TEXT | Discount coupon code applied |
 | `date` | TIMESTAMPTZ | Invoice timestamp |
 | `created_at` | TIMESTAMPTZ | Row creation timestamp |
 

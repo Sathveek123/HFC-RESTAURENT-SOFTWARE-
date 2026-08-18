@@ -94,12 +94,18 @@ CREATE POLICY "Allow public insert to table orders" ON public.table_orders
   FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Allow updates to table orders" ON public.table_orders
-  FOR UPDATE USING (true) WITH CHECK (true);
-
-
--- 4. Add to Realtime replication
+  FOR UPDATE USING (true) WITH CHECK (true);-- 4. Add to Realtime replication
 DO $$
 BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication_tables 
+        WHERE pubname = 'supabase_realtime' 
+          AND schemaname = 'public' 
+          AND tablename = 'restaurant_tables'
+    ) THEN
+        ALTER PUBLICATION supabase_realtime ADD TABLE public.restaurant_tables;
+    END IF;
+
     IF NOT EXISTS (
         SELECT 1 FROM pg_publication_tables 
         WHERE pubname = 'supabase_realtime' 
@@ -118,7 +124,6 @@ BEGIN
         ALTER PUBLICATION supabase_realtime ADD TABLE public.table_orders;
     END IF;
 END $$;
-
 
 -- 5. Seed default physical tables (Tables 01 to 10)
 INSERT INTO public.restaurant_tables (id, table_number, table_name, capacity, is_active)

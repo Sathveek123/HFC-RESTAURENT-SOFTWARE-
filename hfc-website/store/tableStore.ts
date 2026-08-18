@@ -69,7 +69,22 @@ export const useTableStore = create<TableStore>((set, get) => ({
   checkTableStatus: async (tableNumber: string) => {
     set({ isSessionLoading: true })
     try {
-      const res = await fetch(`/api/table/check-lock?table=${tableNumber}`)
+      // Pass stored session token so the server can verify ownership
+      // Without it, the server returns only the bare "occupied" signal (security fix)
+      let tokenParam = ''
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem(SESSION_KEY)
+        if (stored) {
+          try {
+            const session: TableSessionState = JSON.parse(stored)
+            if (session.tableNumber === tableNumber && session.sessionToken) {
+              tokenParam = `&token=${encodeURIComponent(session.sessionToken)}`
+            }
+          } catch {}
+        }
+      }
+
+      const res = await fetch(`/api/table/check-lock?table=${tableNumber}${tokenParam}`)
       const data = await res.json()
       set({ isSessionLoading: false })
 

@@ -12,6 +12,7 @@ export interface Agent {
   coverageArea: string | null
   createdAt: string
   totalDeliveries: number
+  deliveryRate: number          // commission per order
 }
 
 interface AgentsStore {
@@ -56,6 +57,7 @@ export const useAgentsStore = create<AgentsStore>()(
               whatsapp: newAgent.whatsapp,
               coverageArea: newAgent.coverageArea || 'Central',
               vehicleType: newAgent.vehicleType || 'Bike',
+              deliveryRate: newAgent.deliveryRate !== undefined ? newAgent.deliveryRate : 40,
             })
           })
 
@@ -78,6 +80,7 @@ export const useAgentsStore = create<AgentsStore>()(
               coverageArea: data.agent.coverage_area,
               createdAt: data.agent.created_at,
               totalDeliveries: data.agent.total_deliveries || 0,
+              deliveryRate: Number(data.agent.delivery_rate) || 40,
             }
             set({ agents: [...get().agents, agent] })
             await syncAgentToSupabase(agent)
@@ -107,7 +110,7 @@ export const useAgentsStore = create<AgentsStore>()(
           const { data: { session } } = await supabase.auth.getSession()
           
           // If we have an active admin session and updates to credentials/meta, sync to Supabase Auth
-          if (session && (updates.password || updates.name || updates.username || updates.whatsapp)) {
+          if (session && (updates.password || updates.name || updates.username || updates.whatsapp || updates.deliveryRate !== undefined)) {
             const mergedPayload = {
               id,
               name: updates.name !== undefined ? updates.name : currentAgent.name,
@@ -116,6 +119,7 @@ export const useAgentsStore = create<AgentsStore>()(
               whatsapp: updates.whatsapp !== undefined ? updates.whatsapp : currentAgent.whatsapp,
               coverageArea: updates.coverageArea !== undefined ? updates.coverageArea : currentAgent.coverageArea || '',
               vehicleType: updates.vehicleType !== undefined ? updates.vehicleType : currentAgent.vehicleType || '',
+              deliveryRate: updates.deliveryRate !== undefined ? updates.deliveryRate : currentAgent.deliveryRate !== undefined ? currentAgent.deliveryRate : 40,
             }
 
             const res = await fetch('/api/admin/agents/provision', {
@@ -146,6 +150,7 @@ export const useAgentsStore = create<AgentsStore>()(
                 coverageArea: resData.agent.coverage_area,
                 createdAt: resData.agent.created_at,
                 totalDeliveries: resData.agent.total_deliveries || 0,
+                deliveryRate: Number(resData.agent.delivery_rate) || 40,
               }
               // If the agent ID changed (dummy migrated to UUID), filter out the old ID row
               const list = get().agents.filter(a => a.id !== id)

@@ -55,7 +55,8 @@ Every config detail (delivery fees, UPI ID, coupons, menu products) is loaded fr
 ### Right Column Structure (Desktop Only)
 - Three concentric circles creating depth of field (middle 380px ring rotates continuously).
 - Floating center HFC Logo badge with box shadow synced to float y-position.
-- Social proof float cards: "Menu Ready / Launch in 7 Days", "+34% Avg Growth / revenue in 6 months", "★★★★★ 4.9 (184 reviews)".
+- Social proof float cards: "Now Live / Order via WhatsApp", "+34% Avg Growth / revenue in 6 months", "★★★★★ 4.9 (184 reviews)".
+
 
 ---
 

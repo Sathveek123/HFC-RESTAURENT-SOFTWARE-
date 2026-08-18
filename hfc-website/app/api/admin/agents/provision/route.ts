@@ -8,7 +8,7 @@ import { createClient } from '@supabase/supabase-js'
  */
 export async function POST(req: Request) {
   try {
-    const { id, name, username, password, whatsapp, coverageArea, vehicleType } = await req.json()
+    const { id, name, username, password, whatsapp, coverageArea, vehicleType, deliveryRate } = await req.json()
 
     // Validation checks depending on whether it is an update or a new account creation
     const isUpdate = !!id
@@ -161,7 +161,7 @@ export async function POST(req: Request) {
         is_active: true,
         vehicle_type: vehicleType || 'Bike',
         coverage_area: coverageArea || 'Central',
-        total_deliveries: 0,
+        delivery_rate: deliveryRate !== undefined ? Number(deliveryRate) : 40.00,
       }, { onConflict: 'id' })
       .select()
 

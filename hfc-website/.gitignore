@@ -41,3 +41,8 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# sensitive documentation
+docs/CREDENTIALS_REFERENCE.md
+docs/BUGFIX_LOG.md
+

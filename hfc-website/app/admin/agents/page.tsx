@@ -1,9 +1,10 @@
 'use client'
 
 import React, { useState, useRef, useMemo, useEffect } from 'react'
+import Link from 'next/link'
 import {
   Truck, MessageCircle, Eye, EyeOff, Pencil, Trash2,
-  AlertTriangle, X, Check
+  AlertTriangle, X, Check, TrendingUp
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAgentsStore, Agent } from '@/store/agentsStore'
@@ -49,6 +50,7 @@ function EditModal({ agent, onClose }: EditModalProps) {
   const [password, setPassword] = useState('')
   const [vehicleType, setVehicleType] = useState(agent.vehicleType ?? '')
   const [coverageArea, setCoverageArea] = useState(agent.coverageArea ?? '')
+  const [deliveryRate, setDeliveryRate] = useState(String(agent.deliveryRate ?? 40))
   const [showPwd, setShowPwd] = useState(false)
   const [usernameStatus, setUsernameStatus] = useState<'ok' | 'taken' | 'short'>('ok')
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -79,6 +81,7 @@ function EditModal({ agent, onClose }: EditModalProps) {
       password: password || undefined,
       vehicleType: (vehicleType as Agent['vehicleType']) || null,
       coverageArea: coverageArea.trim() || null,
+      deliveryRate: Number(deliveryRate) || 40,
     })
     onClose()
   }
@@ -148,6 +151,18 @@ function EditModal({ agent, onClose }: EditModalProps) {
             <FormLabel>Coverage area</FormLabel>
             <input value={coverageArea} onChange={e => setCoverageArea(e.target.value)}
               className={inputCls} placeholder="e.g. Maruthi Nagar, Labour Colony" />
+          </div>
+
+          <div>
+            <FormLabel>Delivery Rate (₹ per Order)</FormLabel>
+            <input
+              type="number"
+              value={deliveryRate}
+              onChange={e => setDeliveryRate(e.target.value)}
+              className={inputCls}
+              placeholder="40"
+              min={0}
+            />
           </div>
         </div>
 
@@ -230,6 +245,11 @@ function AgentRow({
           </span>
         </td>
 
+        {/* Delivery Rate */}
+        <td className="px-5 py-4 align-middle text-center font-brand font-bold text-[13px] text-brand-black">
+          ₹{agent.deliveryRate ?? 40}
+        </td>
+
         {/* Orders stat */}
         <td className="px-5 py-4 align-middle text-center">
           <span className="font-brand font-bold text-[13px] text-brand-black">{assignedCount}</span>
@@ -254,6 +274,10 @@ function AgentRow({
         {/* Actions */}
         <td className="px-5 py-4 align-middle">
           <div className="flex items-center gap-2">
+            <Link href={`/admin/agents/${agent.id}/performance`} onClick={e => e.stopPropagation()}
+              className="bg-white border border-brand-border text-brand-black font-brand font-semibold text-[11px] uppercase px-3 h-[30px] rounded-[6px] hover:border-brand-black hover:bg-[#F5F5F5] transition-all flex items-center gap-1.5 cursor-pointer">
+              <TrendingUp size={11} className="text-amber-500" /> Stats
+            </Link>
             <button onClick={e => { e.stopPropagation(); onEdit() }}
               className="bg-white border border-brand-border text-brand-black font-brand font-semibold text-[11px] uppercase px-3 h-[30px] rounded-[6px] hover:border-brand-black hover:bg-[#F5F5F5] transition-all flex items-center gap-1.5 cursor-pointer">
               <Pencil size={11} /> Edit
@@ -269,7 +293,7 @@ function AgentRow({
       {/* Inline delete confirm row */}
       {showDelete && (
         <tr>
-          <td colSpan={6} className="bg-red-50 border-t border-b border-red-200 px-5 py-3">
+          <td colSpan={7} className="bg-red-50 border-t border-b border-red-200 px-5 py-3">
             <div className="flex items-center gap-3 flex-wrap">
               <AlertTriangle size={15} className="text-red-500 flex-shrink-0" />
               <span className="font-body text-[13px] text-red-700 flex-1">
@@ -346,6 +370,7 @@ export default function AdminAgentsPage() {
   const [whatsapp, setWhatsapp] = useState('')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [deliveryRate, setDeliveryRate] = useState('40')
   const [showPwd, setShowPwd] = useState(false)
   const [whatsappTouched, setWhatsappTouched] = useState(false)
   const [usernameStatus, setUsernameStatus] = useState<'idle' | 'available' | 'taken' | 'short'>('idle')
@@ -380,8 +405,9 @@ export default function AdminAgentsPage() {
       isActive: true,
       vehicleType: null,
       coverageArea: null,
+      deliveryRate: Number(deliveryRate) || 40,
     })
-    setName(''); setWhatsapp(''); setUsername(''); setPassword('')
+    setName(''); setWhatsapp(''); setUsername(''); setPassword(''); setDeliveryRate('40')
     setUsernameStatus('idle'); setWhatsappTouched(false)
   }
 
@@ -493,6 +519,20 @@ export default function AdminAgentsPage() {
               </div>
               <p className="text-[11px] text-brand-muted mt-1">Agent uses this to view their assigned orders</p>
             </div>
+
+            {/* Delivery Rate */}
+            <div>
+              <FormLabel>Delivery Rate (₹ per Order)</FormLabel>
+              <input
+                type="number"
+                value={deliveryRate}
+                onChange={e => setDeliveryRate(e.target.value)}
+                className={inputCls}
+                placeholder="40"
+                min={0}
+              />
+              <p className="text-[11px] text-brand-muted mt-1">Amount paid to rider per successful delivery</p>
+            </div>
           </div>
 
           <button type="submit" disabled={!canAdd}
@@ -512,7 +552,7 @@ export default function AdminAgentsPage() {
           <table className="w-full min-w-[680px]">
             <thead>
               <tr className="bg-[#FAFAFA] border-b border-brand-border">
-                {['Name', 'WhatsApp', 'Username', 'Orders', 'Active', 'Actions'].map(h => (
+                {['Name', 'WhatsApp', 'Username', 'Rate (₹)', 'Orders', 'Active', 'Actions'].map(h => (
                   <th key={h} className="font-brand font-semibold text-[10px] text-brand-muted uppercase tracking-[1.2px] px-5 py-3.5 text-left whitespace-nowrap">
                     {h}
                   </th>
@@ -522,7 +562,7 @@ export default function AdminAgentsPage() {
             <tbody>
               {agents.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-10">
+                  <td colSpan={7} className="text-center py-10">
                     <span className="font-body text-[14px] text-brand-muted">No agents yet.</span>
                   </td>
                 </tr>

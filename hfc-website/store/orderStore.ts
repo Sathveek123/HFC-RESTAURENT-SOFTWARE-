@@ -50,6 +50,13 @@ export interface OrderRecord {
   createdAt: string
   updatedAt: string            // required — always set on write
   timestamp: number            // unix ms — for sorting
+  source?: string
+  tokenNumber?: string
+  packagingCharge?: number
+  pickedUpAt?: string | null
+  kitchenSource?: string | null
+  riderEarning?: number
+  estimatedDeliveryMinutes?: number
 }
 
 interface OrderStore {
@@ -172,14 +179,31 @@ export const useOrderStore = create<OrderStore>()(
 
         const isDelivery = order.orderType === 'delivery'
         const isDeliveredStatus = status === 'delivered'
+        const isPickedUpStatus = status === 'picked-up'
         const isCashPayment = order.paymentMethod === 'Cash'
         const isUnpaid = order.paymentStatus !== 'paid'
         const autoPayment = isDelivery && isDeliveredStatus && isCashPayment && isUnpaid
+
+        const { useSettingsStore } = require('./settingsStore')
+        const settings = useSettingsStore.getState().settings
+
+        let riderEarning = order.riderEarning || 0
+        if (isDeliveredStatus && isDelivery) {
+          const model = settings?.riderEarningModel || 'flat'
+          if (model === 'percent') {
+            const pct = settings?.riderEarningPercent ?? 50
+            riderEarning = Math.round((order.deliveryCharge || 0) * (pct / 100) * 100) / 100
+          } else {
+            riderEarning = settings?.riderFlatFee ?? 30
+          }
+        }
 
         const updatedOrder: OrderRecord = {
           ...order,
           status,
           paymentStatus: autoPayment ? 'paid' : order.paymentStatus,
+          pickedUpAt: isPickedUpStatus ? new Date().toISOString() : order.pickedUpAt,
+          riderEarning: riderEarning,
           updatedAt: new Date().toISOString(),
         }
 
@@ -248,9 +272,13 @@ export const useOrderStore = create<OrderStore>()(
       assignAgent: (id, agentName) => {
         const order = get().orders.find(o => o.id === id)
         if (!order) return
+        const { useSettingsStore } = require('./settingsStore')
+        const settings = useSettingsStore.getState().settings
+        const defaultEta = settings?.defaultEtaMinutes ?? 30
         const updatedOrder: OrderRecord = {
           ...order,
           assignedAgent: agentName || null,
+          estimatedDeliveryMinutes: order.estimatedDeliveryMinutes || defaultEta,
           updatedAt: new Date().toISOString(),
         }
         set({

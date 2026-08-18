@@ -3,7 +3,8 @@
 import { use, useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Phone, ArrowLeft, MapPin, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react'
+import { Phone, ArrowLeft, MapPin, CheckCircle, AlertCircle, RefreshCw, Star } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 import { QRCodeSVG } from 'qrcode.react'
 import { useOrderStore, OrderRecord, OrderStatus } from '@/store/orderStore'
 import { useSettingsStore } from '@/store/settingsStore'
@@ -67,6 +68,109 @@ function getStatusMessage(status: OrderStatus, orderType: string): string {
     default:
       return ''
   }
+}
+
+// ─── CUSTOMER RATING PROMPT ─────────────────────────────────────────────────
+
+function RatingPrompt({ orderId, agentName }: { orderId: string; agentName: string }) {
+  const [rating, setRating] = useState(0)
+  const [hovered, setHovered] = useState(0)
+  const [feedback, setFeedback] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  const handleSubmit = async () => {
+    if (rating === 0) { setError('Please select a star rating'); return }
+    setSubmitting(true)
+    setError('')
+    try {
+      const { error: rpcError } = await supabase.rpc('submit_delivery_rating', {
+        p_order_id: orderId,
+        p_rating: rating,
+        p_feedback: feedback.trim() || null
+      })
+      if (rpcError) throw rpcError
+      setSubmitted(true)
+    } catch (err: any) {
+      setError(err?.message || 'Failed to submit rating. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (submitted) {
+    return (
+      <div className="bg-green-50 border border-green-200 rounded-card p-5 shadow-card text-center">
+        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-2">
+          <CheckCircle size={24} className="text-green-700" />
+        </div>
+        <h3 className="font-brand font-bold text-[15px] text-green-800 mb-1">Thanks for your feedback!</h3>
+        <p className="font-body text-[13px] text-green-700">Your rating helps us improve our service.</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white border border-brand-border rounded-card p-6 shadow-card">
+      <h3 className="font-brand font-bold text-[16px] text-brand-black mb-1">Rate your delivery</h3>
+      <p className="font-body text-[13px] text-brand-muted mb-4">
+        How was your experience with <strong className="text-brand-black">{agentName}</strong>?
+      </p>
+
+      {/* Star Selector */}
+      <div className="flex items-center gap-2 mb-4">
+        {[1, 2, 3, 4, 5].map(star => (
+          <button
+            key={star}
+            type="button"
+            onClick={() => setRating(star)}
+            onMouseEnter={() => setHovered(star)}
+            onMouseLeave={() => setHovered(0)}
+            className="transition-transform hover:scale-110 cursor-pointer"
+          >
+            <Star
+              size={32}
+              className={`transition-colors ${
+                star <= (hovered || rating)
+                  ? 'fill-amber-400 text-amber-400'
+                  : 'text-gray-300'
+              }`}
+            />
+          </button>
+        ))}
+        {rating > 0 && (
+          <span className="font-brand font-bold text-[13px] text-brand-black ml-1">
+            {['', 'Poor', 'Fair', 'Good', 'Great', 'Excellent!'][rating]}
+          </span>
+        )}
+      </div>
+
+      {/* Feedback Text */}
+      <textarea
+        rows={2}
+        value={feedback}
+        onChange={e => setFeedback(e.target.value)}
+        placeholder="Any comments? (optional)"
+        className="w-full border border-brand-border rounded-[8px] px-3 py-2.5 font-body text-[13px] text-brand-black resize-none focus:outline-none focus:border-brand-red focus:ring-2 focus:ring-brand-red/10 transition-all mb-3"
+      />
+
+      {error && (
+        <p className="font-body text-[12px] text-red-600 mb-2 flex items-center gap-1">
+          <AlertCircle size={13} /> {error}
+        </p>
+      )}
+
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={submitting || rating === 0}
+        className="bg-brand-red text-white font-brand font-bold text-[13px] uppercase tracking-[1px] h-[42px] px-6 rounded-btn hover:bg-brand-redHover transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+      >
+        {submitting ? 'Submitting...' : 'Submit Rating'}
+      </button>
+    </div>
+  )
 }
 
 // ─── MAIN PAGE ────────────────────────────────────────────────────────────────
@@ -521,6 +625,11 @@ function TrackOrderPageInner({ orderId }: { orderId: string }) {
             </div>
           </div>
         ) : null}
+
+        {/* ─── Post-Delivery Customer Rating ────────────────────────────────── */}
+        {isDelivered && order.assignedAgent && (
+          <RatingPrompt orderId={order.id} agentName={order.assignedAgent} />
+        )}
 
         {/* Bottom CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 pt-2">

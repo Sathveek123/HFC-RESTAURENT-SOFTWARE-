@@ -40,6 +40,7 @@ export interface Settings {
   upiId: string
   acceptCash: boolean
   acceptOnline: boolean
+  packagingCharge: number   // Counter QR takeaway packaging fee (₹)
 
   // WhatsApp Auto-send
   cloudApiToken: string
@@ -54,6 +55,13 @@ export interface Settings {
   // Kitchen Closing Parameters (configurable operating windows)
   kitchenCloseHour: number
   kitchenOpenHour: number
+
+  // Rider Performance settings
+  riderEarningModel?: 'flat' | 'percent'
+  riderFlatFee?: number
+  riderEarningPercent?: number
+  defaultEtaMinutes?: number
+  riderTargetVolume?: number
 }
 
 const defaultSettings: Settings = {
@@ -77,6 +85,7 @@ const defaultSettings: Settings = {
   upiId: '9912799855@okbizaxis',
   acceptCash: true,
   acceptOnline: true,
+  packagingCharge: 10,
 
   cloudApiToken: '',
   cloudApiPhoneId: '',
@@ -93,7 +102,13 @@ const defaultSettings: Settings = {
   ],
 
   kitchenCloseHour: 22, // 10:00 PM
-  kitchenOpenHour: 4   // 4:00 AM
+  kitchenOpenHour: 4,  // 4:00 AM
+
+  riderEarningModel: 'flat',
+  riderFlatFee: 30,
+  riderEarningPercent: 50,
+  defaultEtaMinutes: 30,
+  riderTargetVolume: 20
 }
 
 interface SettingsStore {

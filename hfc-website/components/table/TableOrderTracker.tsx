@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from 'react'
 import { Clock, ChefHat, CheckCircle2, AlertCircle, ShoppingCart } from 'lucide-react'
+import { QRCodeSVG } from 'qrcode.react'
 import { supabase } from '@/lib/supabase'
 import { useTableStore } from '@/store/tableStore'
+import { useSettingsStore } from '@/store/settingsStore'
 
 interface OrderRound {
   id: string
@@ -31,6 +33,7 @@ export default function TableOrderTracker({
   const [rounds, setRounds] = useState<OrderRound[]>([])
   const [loading, setLoading] = useState(true)
   const isSessionLoading = useTableStore(state => state.isSessionLoading)
+  const settings = useSettingsStore(state => state.settings)
 
   useEffect(() => {
     const fetchRounds = async () => {
@@ -184,6 +187,12 @@ export default function TableOrderTracker({
                     <span className="font-semibold">Note:</span> {round.special_instructions}
                   </div>
                 )}
+
+                {round.status === 'rejected' && (round as any).rejection_reason && (
+                  <div className="mt-3 p-2.5 bg-red-50 border border-red-100 rounded-[8px] text-[11.5px] font-body text-brand-red">
+                    <span className="font-semibold">Reason:</span> {(round as any).rejection_reason}
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -192,20 +201,54 @@ export default function TableOrderTracker({
 
       {/* Bill Preview Card */}
       {rounds.length > 0 && (
-        <div className="bg-white border border-brand-border rounded-[16px] p-5 shadow-xs space-y-3">
-          <div className="flex justify-between text-[13px] text-brand-muted">
-            <span>Running Subtotal</span>
-            <span>₹{totals.subtotal.toFixed(2)}</span>
+        <>
+          <div className="bg-white border border-brand-border rounded-[16px] p-5 shadow-xs space-y-3">
+            <div className="flex justify-between text-[13px] text-brand-muted">
+              <span>Running Subtotal</span>
+              <span>₹{totals.subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-[13px] text-brand-muted">
+              <span>GST (5%)</span>
+              <span>₹{gst.toFixed(2)}</span>
+            </div>
+            <div className="border-t border-brand-border pt-3 flex justify-between font-brand font-extrabold text-[17px] text-brand-black">
+              <span>Current Total</span>
+              <span className="text-brand-red">₹{finalTotal.toFixed(2)}</span>
+            </div>
           </div>
-          <div className="flex justify-between text-[13px] text-brand-muted">
-            <span>GST (5%)</span>
-            <span>₹{gst.toFixed(2)}</span>
-          </div>
-          <div className="border-t border-brand-border pt-3 flex justify-between font-brand font-extrabold text-[17px] text-brand-black">
-            <span>Current Total</span>
-            <span className="text-brand-red">₹{finalTotal.toFixed(2)}</span>
-          </div>
-        </div>
+
+          {/* Instant Scan & Pay QR Code */}
+          {(() => {
+            const upiId = settings.upiId || '9912799855@okbizaxis'
+            const siteName = settings.siteName || 'HFC Restaurant'
+            const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(siteName)}&am=${finalTotal.toFixed(2)}&cu=INR`
+
+            return (
+              <div className="bg-white border border-brand-border rounded-[16px] p-5 shadow-xs text-center space-y-4">
+                <div>
+                  <h3 className="font-brand font-bold text-[13px] text-brand-black uppercase tracking-[1px]">
+                    ⚡ Instant Scan & Pay
+                  </h3>
+                  <p className="font-body text-[11px] text-brand-muted mt-0.5">
+                    Scan with GPay, PhonePe, Paytm, or click the button below to pay directly
+                  </p>
+                </div>
+                
+                <div className="flex flex-col items-center justify-center p-3 bg-white border border-brand-border rounded-[12px] shadow-2xs max-w-[170px] mx-auto">
+                  <QRCodeSVG value={upiUrl} size={140} level="M" />
+                  <span className="font-mono text-[8px] text-brand-muted mt-2 select-all">{upiId}</span>
+                </div>
+
+                <a 
+                  href={upiUrl}
+                  className="inline-flex items-center gap-1.5 font-brand font-bold text-[11px] text-brand-red bg-brand-redLight px-4 py-2 rounded-full hover:bg-brand-red hover:text-white transition-colors uppercase tracking-[0.5px]"
+                >
+                  📱 Tap to Pay on Mobile
+                </a>
+              </div>
+            )
+          })()}
+        </>
       )}
 
       {/* Bottom Sticky Action Buttons */}
@@ -217,13 +260,24 @@ export default function TableOrderTracker({
           <ShoppingCart size={15} /> Add More
         </button>
 
-        <button
-          onClick={onCheckout}
-          disabled={isSessionLoading || rounds.length === 0}
-          className="flex-1 bg-brand-red hover:bg-brand-redHover text-white font-brand font-bold text-[13px] uppercase tracking-wider py-3.5 rounded-btn transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-brand-redLight/20 disabled:opacity-50"
-        >
-          Complete & Pay
-        </button>
+        {(() => {
+          const upiId = settings.upiId || '9912799855@okbizaxis'
+          const siteName = settings.siteName || 'HFC Restaurant'
+          const upiUrl = `upi://pay?pa=${upiId}&pn=${encodeURIComponent(siteName)}&am=${finalTotal.toFixed(2)}&cu=INR`
+
+          return (
+            <button
+              onClick={async () => {
+                await onCheckout()
+                window.location.href = upiUrl
+              }}
+              disabled={isSessionLoading || rounds.length === 0}
+              className="flex-1 bg-brand-red hover:bg-brand-redHover text-white font-brand font-bold text-[13px] uppercase tracking-wider py-3.5 rounded-btn transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-md shadow-brand-redLight/20 disabled:opacity-50"
+            >
+              Complete & Pay
+            </button>
+          )
+        })()}
       </div>
     </div>
   )

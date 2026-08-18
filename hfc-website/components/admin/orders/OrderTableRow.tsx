@@ -165,7 +165,7 @@ export default function OrderTableRow({ order }: OrderTableRowProps) {
             {order.orderType === 'takeaway' && (
               <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 font-brand font-semibold text-[10px] uppercase tracking-[0.8px] px-2.5 py-1 rounded-[4px] w-fit">
                 <ShoppingBag size={11} />
-                Takeaway
+                {order.source === 'counter-qr' ? `Counter #${order.tokenNumber || ''}` : 'Takeaway'}
               </span>
             )}
             {order.orderType === 'delivery' && (

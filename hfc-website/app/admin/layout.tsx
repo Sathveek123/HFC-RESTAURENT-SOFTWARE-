@@ -103,14 +103,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       const exists = useOrderStore.getState().orders.some(o => o.id === updatedOrder.id)
       if (!exists && updatedOrder.status === 'placed') {
         playChime()
+        let notifyTitle = '🔔 New Order Received!'
+        let notifyBody = `Customer: ${updatedOrder.customerName} (₹${updatedOrder.total.toLocaleString('en-IN')})`
+        
+        if (updatedOrder.source === 'counter-qr') {
+          notifyTitle = `🥡 COUNTER ORDER — Token #${updatedOrder.tokenNumber || ''}`
+          notifyBody = `${updatedOrder.items.length} items · ₹${updatedOrder.total.toLocaleString('en-IN')} · Payment: UPI`
+        }
+
         toast.success(
           (t) => (
             <div className="flex flex-col gap-1 font-body text-[13px]">
               <strong className="font-brand font-bold text-brand-black">
-                🔔 New Order Received!
+                {notifyTitle}
               </strong>
               <span>
-                Customer: {updatedOrder.customerName} (₹{updatedOrder.total.toLocaleString('en-IN')})
+                {notifyBody}
               </span>
               <button
                 onClick={() => {

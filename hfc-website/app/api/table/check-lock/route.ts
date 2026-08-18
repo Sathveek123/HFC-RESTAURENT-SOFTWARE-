@@ -5,6 +5,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const tableNumber = searchParams.get('table')
+    const requestingToken = searchParams.get('token') // session token from localStorage, optional
 
     if (!tableNumber) {
       return NextResponse.json({ error: 'Missing table parameter' }, { status: 400 })
@@ -50,21 +51,40 @@ export async function GET(request: Request) {
       return NextResponse.json({ locked: false, session: null })
     }
 
-    // Count existing round KOTs for this session
-    const { count: roundCount, error: countErr } = await supabase
-      .from('table_orders')
-      .select('*', { count: 'exact', head: true })
-      .eq('session_id', session.id)
+    // ─── SECURITY: Owner vs Stranger check ───────────────────────────────────
+    // The requesting device is the owner ONLY if it provides the session_token
+    // that was issued exclusively to the ordering device at create-session time.
+    const isOwner = !!requestingToken && requestingToken === session.session_token
 
+    if (isOwner) {
+      // Count existing round KOTs for this session
+      const { count: roundCount } = await supabase
+        .from('table_orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('session_id', session.id)
+
+      // Full details — only the actual table owner gets this
+      return NextResponse.json({
+        locked: true,
+        isOwner: true,
+        sessionId: session.id,
+        startedAt: session.started_at,
+        totalAmount: Number(session.total_amount) || 0,
+        paymentStatus: session.payment_status,
+        status: session.status,
+        roundCount: roundCount || 0
+      })
+    }
+
+    // NOT the owner — return ONLY the bare "occupied" signal.
+    // No total, no items, no payment status, no session ID — nothing they 
+    // could exploit to monitor or copy another table's order.
     return NextResponse.json({
       locked: true,
-      sessionId: session.id,
-      startedAt: session.started_at,
-      totalAmount: Number(session.total_amount) || 0,
-      paymentStatus: session.payment_status,
-      status: session.status,
-      roundCount: roundCount || 0
+      isOwner: false,
+      message: 'This table is currently occupied by another party.'
     })
+
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 })
   }

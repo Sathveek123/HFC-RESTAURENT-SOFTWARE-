@@ -1,7 +1,7 @@
 # 🏗️ HFC Restaurant Software — Project Overview
 
 > **Production URL:** https://hfc-restaurent-software.vercel.app  
-> **Supabase Project:** cmwsffhenpckwkwgnmsy  
+> **Supabase Project:** [YOUR_SUPABASE_PROJECT_REF]  
 > **Stack:** Next.js 16.3 · TypeScript · Tailwind CSS v4 · Supabase · Zustand · Vercel
 
 ---
@@ -58,7 +58,8 @@ hfc-website/
 │   │   ├── bills/page.tsx      # Bills & invoices (Supabase)
 │   │   ├── coupons/page.tsx    # Coupons, Offers & Reward Tiers (realtime)
 │   │   ├── agents/page.tsx     # Delivery agent management
-│   │   └── settings/page.tsx   # Business settings (realtime)
+│   │   ├── settings/page.tsx   # Business settings (realtime)
+│   │   └── tables/             # Table sessions management (realtime)
 │   ├── agent/                  # Delivery Agent Portal routes
 │   │   ├── layout.tsx          # Agent auth guard + topbar
 │   │   ├── login/page.tsx
@@ -66,9 +67,13 @@ hfc-website/
 │   │   └── report/page.tsx     # My Report (personal analytics)
 │   ├── track/
 │   │   └── [orderId]/page.tsx  # Live order tracker (customer-facing, realtime)
+│   ├── table/
+│   │   └── [tableNumber]/page.tsx # Table QR self-service session order screen
+│   ├── counter/page.tsx        # Counter takeaway QR order screen
 │   └── api/
-│       └── admin/
-│           └── agents/provision/route.ts  # Secure agent provisioning endpoint
+│       ├── admin/
+│       │   └── agents/provision/route.ts  # Secure agent provisioning endpoint
+│       └── table/              # Session-lock, lock checks, add-items API routes
 │
 ├── components/                 # Reusable React components
 │   ├── admin/                  # Admin panel components
@@ -151,12 +156,15 @@ hfc-website/
 
 ```
 /                           → Customer homepage (menu + cart + realtime)
+/table/[tableNumber]        → Table QR session-locked dine-in order screen
+/counter                    → Self-service counter takeaway QR screen
 /track/[orderId]            → Live order tracker (realtime WebSocket)
 /admin/login                → Admin authentication
 /admin/dashboard            → Analytics & KPIs
 /admin/orders               → Orders list (all statuses, realtime)
 /admin/orders/[orderId]     → Order detail & management
 /admin/products             → Menu product management (realtime)
+/admin/tables               → Active table session lock list
 /admin/inventory            → Live depletion levels & variance dashboard (realtime)
 /admin/inventory/stock      → Opening stock & inward vendor invoices
 /admin/inventory/recipes    → Map menu items to raw material recipe quantities
@@ -172,7 +180,7 @@ hfc-website/
 /agent/orders               → My Orders (agent-filtered, realtime)
 /agent/report               → My Report (personal analytics)
 /api/admin/agents/provision → Secure server-side agent creation endpoint
-/api/admin/clean-orders     → Admin maintenance endpoint
+/api/table/                 → Table QR session lock operations
 /privacy                    → Privacy policy
 /terms                      → Terms & conditions
 ```

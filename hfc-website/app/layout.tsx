@@ -45,11 +45,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'HFC Restaurant Software | Order Delicious Food Online',
     description: 'Order premium quality chicken biryani, dal makhani, paneer tikka, and more online. Delivered hot and fresh directly to your doorstep in Rajam.',
-    url: 'https://hfc-website-two.vercel.app',
+    url: 'https://hfc-restaurent-software.vercel.app',
     siteName: 'HFC Restaurant Software',
     images: [
       {
-        url: 'https://hfc-website-two.vercel.app/logo.jpeg',
+        url: 'https://hfc-restaurent-software.vercel.app/logo.jpeg',
         width: 800,
         height: 800,
         alt: 'HFC Restaurant Software Brand Logo',
@@ -62,7 +62,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'HFC Restaurant Software | Order Delicious Food Online',
     description: 'Order premium quality chicken biryani, dal makhani, paneer tikka, and more online. Delivered hot and fresh directly to your doorstep in Rajam.',
-    images: ['https://hfc-website-two.vercel.app/logo.jpeg'],
+    images: ['https://hfc-restaurent-software.vercel.app/logo.jpeg'],
   },
 }
 
@@ -78,6 +78,8 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        <link rel="icon" href="/logo.jpeg" />
+        <link rel="apple-touch-icon" href="/logo.jpeg" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -85,8 +87,8 @@ export default function RootLayout({
               '@context': 'https://schema.org',
               '@type': 'Restaurant',
               'name': 'HFC Restaurant Software',
-              'image': 'https://hfc-website-two.vercel.app/logo.jpeg',
-              'url': 'https://hfc-website-two.vercel.app',
+              'image': 'https://hfc-restaurent-software.vercel.app/logo.jpeg',
+              'url': 'https://hfc-restaurent-software.vercel.app',
               'telephone': '+919912799855',
               'priceRange': '₹₹',
               'servesCuisine': 'Indian, Mughlai, Biryani',
